@@ -3,7 +3,15 @@ from fastapi.responses import JSONResponse
  
 from app.config import settings
 from app.routes.analyze import router as analyze_router
- 
+import logging
+import sys
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+
 app = FastAPI(
     title=settings.app_name,
     version="1.0.0",

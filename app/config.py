@@ -14,7 +14,7 @@ class Settings(BaseSettings):
  
     whisper_model_size: str = "small"
     whisper_compute_type: str = "int8"
-    upload_dir: str = "uploads"
+    upload_dir: str = "/opt/llm/data/tmp_uploads"
  
     model_config = SettingsConfigDict(
         env_file=".env",
