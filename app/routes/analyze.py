@@ -24,7 +24,7 @@ async def health():
     return {
         "status": "ok",
         "app": settings.app_name,
-        "model": settings.model_name,
+        "model": settings.llm_model_name,
     }
 
 
@@ -65,9 +65,9 @@ async def transcribe_endpoint(file: UploadFile = File(...)):
         transcription = transcribe_audio(preprocessed_path)
 
         logger.info(
-            f"[{request_id}] transcription finished, stt_sec={time.perf_counter() - stt_started:.3f}, "
-            f"text_len={len(transcription.get('text', ''))}, language={transcription.get('language')}, "
-            f"mode={transcription.get('mode')}"
+            f"[{request_id}] transcription finished stt_sec={time.perf_counter() - stt_started:.3f} "
+            f"text_len={len(transcription.get('text', ''))} language={transcription.get('language')} "
+            f"best_mode={transcription.get('best_mode')}"
         )
 
         logger.info(
@@ -126,46 +126,35 @@ async def analyze_audio(file: UploadFile = File(...)):
 
         logger.info(f"[{request_id}] transcription started")
         stt_started = time.perf_counter()
-
         transcription = transcribe_audio(preprocessed_path)
 
         logger.info(
-            f"[{request_id}] transcription finished, stt_sec={time.perf_counter() - stt_started:.3f}, "
-            f"text_len={len(transcription.get('text', ''))}, language={transcription.get('language')}, "
-            f"mode={transcription.get('mode')}"
+            f"[{request_id}] transcription finished stt_sec={time.perf_counter() - stt_started:.3f} "
+            f"text_len={len(transcription.get('text', ''))} language={transcription.get('language')} "
+            f"best_mode={transcription.get('best_mode')}"
         )
 
-        transcript_text = transcription.get("text", "").strip()
-        transcript_language = transcription.get("language", "ru")
+        best_text = transcription.get("text", "").strip()
+        alternatives = transcription.get("alternatives", {})
+        transcript_language = transcription.get("language")
 
-        logger.info(
-            f"[{request_id}] transcript extracted, text_len={len(transcript_text)}, language={transcript_language}"
-        )
-
-        if not transcript_text:
+        if not best_text and not any((alternatives or {}).values()):
             logger.warning(f"[{request_id}] empty transcription result")
             raise HTTPException(status_code=400, detail="Empty transcription result")
 
-        logger.info(f"[{request_id}] building analysis prompt")
-        prompt_started = time.perf_counter()
-
         prompt = build_analysis_prompt(
-            transcript=transcript_text,
-            language=transcript_language,
+            best_text=best_text,
+            alternatives=alternatives,
+            detected_language=transcript_language,
             conversation_type="crm_customer_call",
-        )
-
-        logger.info(
-            f"[{request_id}] prompt built, prompt_len={len(prompt)}, prompt_sec={time.perf_counter() - prompt_started:.3f}"
         )
 
         logger.info(f"[{request_id}] calling ollama started")
         llm_started = time.perf_counter()
-
         model_output = await generate_with_ollama(prompt)
 
         logger.info(
-            f"[{request_id}] ollama response received, llm_sec={time.perf_counter() - llm_started:.3f}, "
+            f"[{request_id}] ollama response received llm_sec={time.perf_counter() - llm_started:.3f} "
             f"output_len={len(model_output) if model_output else 0}"
         )
 
@@ -175,12 +164,14 @@ async def analyze_audio(file: UploadFile = File(...)):
         except JSONDecodeError:
             logger.warning(f"[{request_id}] model output is not valid JSON, fallback raw_output used")
             parsed = {
+                "cleaned_transcript": best_text,
                 "summary": None,
                 "intent": None,
                 "topics": [],
                 "action_items": [],
-                "customer_sentiment": None,
-                "manager_quality_score": None,
+                "customer_sentiment": "unknown",
+                "manager_quality_score": 0,
+                "notes": ["LLM returned non-JSON output"],
                 "raw_output": model_output,
             }
 
@@ -190,15 +181,17 @@ async def analyze_audio(file: UploadFile = File(...)):
 
         return {
             "status": "ok",
-            "model": settings.model_name,
+            "model": settings.llm_model_name,
             "transcription": transcription,
             "analysis": {
+                "cleaned_transcript": parsed.get("cleaned_transcript"),
                 "summary": parsed.get("summary"),
                 "intent": parsed.get("intent"),
                 "topics": parsed.get("topics") or [],
                 "action_items": parsed.get("action_items") or [],
                 "customer_sentiment": parsed.get("customer_sentiment"),
                 "manager_quality_score": parsed.get("manager_quality_score"),
+                "notes": parsed.get("notes") or [],
                 "raw_output": parsed.get("raw_output"),
             },
         }

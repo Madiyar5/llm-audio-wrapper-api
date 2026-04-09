@@ -65,20 +65,13 @@ async def save_upload_file(upload_file: UploadFile) -> str:
 
     return file_path
 
-import logging
-import os
-import subprocess
-import time
-
-logger = logging.getLogger(__name__)
-
 
 def preprocess_audio_ffmpeg(file_path: str) -> str:
     """
     Мягкий preprocessing:
     - mono
     - 16kHz
-    Без агрессивных фильтров, чтобы не терять речь.
+    Без агрессивной фильтрации по умолчанию.
     """
     started = time.perf_counter()
 
@@ -114,13 +107,14 @@ def preprocess_audio_ffmpeg(file_path: str) -> str:
         )
 
         if result.stderr:
-            logger.info("ffmpeg stderr: %s", result.stderr[-1000:])
+            logger.info("ffmpeg stderr: %s", result.stderr[-1200:])
 
         return output_path
 
     except subprocess.CalledProcessError:
         logger.exception("ffmpeg preprocess failed input=%s", file_path)
         raise
+
 
 def delete_file_safely(file_path: str):
     started = time.perf_counter()
