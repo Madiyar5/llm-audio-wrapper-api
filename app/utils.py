@@ -65,13 +65,20 @@ async def save_upload_file(upload_file: UploadFile) -> str:
 
     return file_path
 
+import logging
+import os
+import subprocess
+import time
+
+logger = logging.getLogger(__name__)
+
 
 def preprocess_audio_ffmpeg(file_path: str) -> str:
     """
-    Делает более удобный для STT wav:
+    Мягкий preprocessing:
     - mono
     - 16kHz
-    - легкая фильтрация телефонного диапазона
+    Без агрессивных фильтров, чтобы не терять речь.
     """
     started = time.perf_counter()
 
@@ -87,8 +94,6 @@ def preprocess_audio_ffmpeg(file_path: str) -> str:
         "1",
         "-ar",
         "16000",
-        "-af",
-        "highpass=f=120,lowpass=f=3800",
         output_path,
     ]
 
@@ -116,7 +121,6 @@ def preprocess_audio_ffmpeg(file_path: str) -> str:
     except subprocess.CalledProcessError:
         logger.exception("ffmpeg preprocess failed input=%s", file_path)
         raise
-
 
 def delete_file_safely(file_path: str):
     started = time.perf_counter()
