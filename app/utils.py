@@ -1,5 +1,6 @@
 import logging
 import os
+import subprocess
 import time
 import uuid
 from pathlib import Path
@@ -63,6 +64,58 @@ async def save_upload_file(upload_file: UploadFile) -> str:
     )
 
     return file_path
+
+
+def preprocess_audio_ffmpeg(file_path: str) -> str:
+    """
+    Делает более удобный для STT wav:
+    - mono
+    - 16kHz
+    - легкая фильтрация телефонного диапазона
+    """
+    started = time.perf_counter()
+
+    base, _ = os.path.splitext(file_path)
+    output_path = f"{base}_preprocessed.wav"
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        file_path,
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-af",
+        "highpass=f=120,lowpass=f=3800",
+        output_path,
+    ]
+
+    logger.info("Starting ffmpeg preprocess input=%s output=%s", file_path, output_path)
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        logger.info(
+            "ffmpeg preprocess completed output=%s sec=%.3f",
+            output_path,
+            time.perf_counter() - started,
+        )
+
+        if result.stderr:
+            logger.info("ffmpeg stderr: %s", result.stderr[-1000:])
+
+        return output_path
+
+    except subprocess.CalledProcessError:
+        logger.exception("ffmpeg preprocess failed input=%s", file_path)
+        raise
 
 
 def delete_file_safely(file_path: str):

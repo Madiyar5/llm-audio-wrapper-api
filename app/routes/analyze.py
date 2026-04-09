@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import time
 import uuid
 from json import JSONDecodeError
@@ -10,7 +11,7 @@ from app.config import settings
 from app.ollama_client import generate_with_ollama
 from app.prompts import build_analysis_prompt
 from app.transcription import transcribe_audio
-from app.utils import delete_file_safely, save_upload_file
+from app.utils import delete_file_safely, preprocess_audio_ffmpeg, save_upload_file
 
 
 router = APIRouter(tags=["analysis"])
@@ -32,6 +33,7 @@ async def transcribe_endpoint(file: UploadFile = File(...)):
     request_id = str(uuid.uuid4())[:8]
     started_at = time.perf_counter()
     file_path = None
+    preprocessed_path = None
 
     logger.info(f"[{request_id}] /transcribe request received")
 
@@ -48,20 +50,24 @@ async def transcribe_endpoint(file: UploadFile = File(...)):
 
         if file_path:
             try:
-                import os
                 file_size = os.path.getsize(file_path)
                 logger.info(f"[{request_id}] saved file size_bytes={file_size}")
             except Exception:
                 logger.exception(f"[{request_id}] failed to get temp file size")
 
+        logger.info(f"[{request_id}] ffmpeg preprocessing started")
+        preprocessed_path = preprocess_audio_ffmpeg(file_path)
+        logger.info(f"[{request_id}] ffmpeg preprocessing finished path={preprocessed_path}")
+
         logger.info(f"[{request_id}] transcription started")
         stt_started = time.perf_counter()
 
-        transcription = transcribe_audio(file_path)
+        transcription = transcribe_audio(preprocessed_path)
 
         logger.info(
             f"[{request_id}] transcription finished, stt_sec={time.perf_counter() - stt_started:.3f}, "
-            f"text_len={len(transcription.get('text', ''))}, language={transcription.get('language')}"
+            f"text_len={len(transcription.get('text', ''))}, language={transcription.get('language')}, "
+            f"mode={transcription.get('mode')}"
         )
 
         logger.info(
@@ -78,10 +84,13 @@ async def transcribe_endpoint(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Transcription failed: {str(exc)}")
 
     finally:
+        if preprocessed_path:
+            logger.info(f"[{request_id}] deleting preprocessed file path={preprocessed_path}")
+            delete_file_safely(preprocessed_path)
+
         if file_path:
             logger.info(f"[{request_id}] deleting temp file path={file_path}")
             delete_file_safely(file_path)
-            logger.info(f"[{request_id}] temp file delete requested")
 
 
 @router.post("/analyze-audio")
@@ -89,6 +98,7 @@ async def analyze_audio(file: UploadFile = File(...)):
     request_id = str(uuid.uuid4())[:8]
     started_at = time.perf_counter()
     file_path = None
+    preprocessed_path = None
 
     logger.info(f"[{request_id}] /analyze-audio request received")
 
@@ -105,20 +115,24 @@ async def analyze_audio(file: UploadFile = File(...)):
 
         if file_path:
             try:
-                import os
                 file_size = os.path.getsize(file_path)
                 logger.info(f"[{request_id}] saved file size_bytes={file_size}")
             except Exception:
                 logger.exception(f"[{request_id}] failed to get temp file size")
 
+        logger.info(f"[{request_id}] ffmpeg preprocessing started")
+        preprocessed_path = preprocess_audio_ffmpeg(file_path)
+        logger.info(f"[{request_id}] ffmpeg preprocessing finished path={preprocessed_path}")
+
         logger.info(f"[{request_id}] transcription started")
         stt_started = time.perf_counter()
 
-        transcription = transcribe_audio(file_path)
+        transcription = transcribe_audio(preprocessed_path)
 
         logger.info(
             f"[{request_id}] transcription finished, stt_sec={time.perf_counter() - stt_started:.3f}, "
-            f"text_len={len(transcription.get('text', ''))}, language={transcription.get('language')}"
+            f"text_len={len(transcription.get('text', ''))}, language={transcription.get('language')}, "
+            f"mode={transcription.get('mode')}"
         )
 
         transcript_text = transcription.get("text", "").strip()
@@ -196,7 +210,10 @@ async def analyze_audio(file: UploadFile = File(...)):
         logger.exception(f"[{request_id}] /analyze-audio failed: {exc}")
         raise HTTPException(status_code=500, detail=f"Audio analysis failed: {str(exc)}")
     finally:
+        if preprocessed_path:
+            logger.info(f"[{request_id}] deleting preprocessed file path={preprocessed_path}")
+            delete_file_safely(preprocessed_path)
+
         if file_path:
             logger.info(f"[{request_id}] deleting temp file path={file_path}")
             delete_file_safely(file_path)
-            logger.info(f"[{request_id}] temp file delete requested")
