@@ -4,7 +4,6 @@ import time
 from faster_whisper import WhisperModel
 from app.config import settings
 
-
 logger = logging.getLogger(__name__)
 
 _whisper_model = None
@@ -20,19 +19,15 @@ def get_whisper_model():
             settings.whisper_model_size,
             settings.whisper_compute_type,
         )
-
         _whisper_model = WhisperModel(
             settings.whisper_model_size,
             device="cpu",
             compute_type=settings.whisper_compute_type,
         )
-
         logger.info(
             "WhisperModel initialized successfully init_sec=%.3f",
             time.perf_counter() - started,
         )
-    else:
-        logger.info("WhisperModel already initialized, reusing existing instance")
 
     return _whisper_model
 
@@ -45,15 +40,19 @@ def transcribe_audio(file_path: str):
         model = get_whisper_model()
 
         logger.info("Whisper transcribe started file_path=%s", file_path)
-        transcribe_started = time.perf_counter()
-
-        segments, info = model.transcribe(file_path)
+        segments, info = model.transcribe(
+            file_path,
+            task="transcribe",
+            language="ru",                  # сначала тестируй ru
+            beam_size=5,
+            vad_filter=True,
+            condition_on_previous_text=False,
+        )
 
         logger.info(
-            "Whisper transcribe returned iterator language=%s duration=%s transcribe_call_sec=%.3f",
+            "Whisper returned iterator language=%s duration=%s",
             getattr(info, "language", None),
             getattr(info, "duration", None),
-            time.perf_counter() - transcribe_started,
         )
 
         text_parts = []
@@ -84,7 +83,7 @@ def transcribe_audio(file_path: str):
         )
 
         return {
-            "language": info.language,
+            "language": getattr(info, "language", None),
             "duration": getattr(info, "duration", None),
             "text": transcript,
         }
