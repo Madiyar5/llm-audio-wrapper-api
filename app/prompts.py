@@ -73,3 +73,40 @@ Rules:
 Input:
 {json.dumps(payload, ensure_ascii=False, indent=2)}
 """.strip()
+
+
+def build_fast_analysis_prompt(
+    transcript: str,
+    conversation_type: str = "crm_customer_call",
+) -> str:
+    payload = {
+        "conversation_type": conversation_type,
+        "transcript": transcript,
+    }
+
+    return f"""
+Ты — аналитик клиентских звонков.
+
+Ниже дан уже готовый транскрипт звонка.
+Верни только валидный JSON на русском языке.
+Не выдумывай факты.
+Если информации недостаточно, пиши "unknown".
+
+Верни JSON строго такого вида:
+
+{{
+  "call_topic": "string",
+  "call_purpose": "string",
+  "customer_request": "string",
+  "product_or_service": "string",
+  "key_points": ["string"],
+  "price_discussed": true,
+  "next_step": "string",
+  "call_outcome": "string",
+  "customer_sentiment": "positive|neutral|negative|mixed|unknown",
+  "analysis_confidence": "high|medium|low"
+}}
+
+Вход:
+{json.dumps(payload, ensure_ascii=False, indent=2)}
+""".strip()

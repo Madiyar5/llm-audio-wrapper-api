@@ -13,6 +13,15 @@ from app.prompts import build_analysis_prompt
 from app.transcription import transcribe_audio
 from app.utils import delete_file_safely, preprocess_audio_ffmpeg, save_upload_file
 from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field
+from app.prompts import build_analysis_prompt, build_fast_analysis_prompt
+from app.ollama_client import generate_with_ollama, generate_with_ollama_fast
+
+class AnalyzeTextFastResponse(BaseModel):
+    status: str
+    model: str
+    call_id: str | None = None
+    analysis: dict
 
 class AnalyzeTextRequest(BaseModel):
     call_id: str | None = None
@@ -344,3 +353,84 @@ async def analyze_text(payload: AnalyzeTextRequest):
     except Exception as exc:
         logger.exception(f"[{request_id}] /analyze-text failed: {exc}")
         raise HTTPException(status_code=500, detail=f"Text analysis failed: {str(exc)}")
+
+
+@router.post("/analyze-text-fast", response_model=AnalyzeTextFastResponse)
+async def analyze_text_fast(payload: AnalyzeTextRequest):
+    request_id = str(uuid.uuid4())[:8]
+    started_at = time.perf_counter()
+
+    logger.info(
+        f"[{request_id}] /analyze-text-fast request received "
+        f"call_id={payload.call_id} detected_language={payload.detected_language} "
+        f"mixed_language={payload.mixed_language}"
+    )
+
+    try:
+        transcript = payload.transcript.strip()
+
+        if not transcript:
+            logger.warning(f"[{request_id}] empty transcript payload")
+            raise HTTPException(status_code=400, detail="Transcript is empty")
+
+        prompt = build_fast_analysis_prompt(
+            transcript=transcript,
+            conversation_type=payload.conversation_type,
+        )
+
+        logger.info(f"[{request_id}] calling ollama fast started")
+        llm_started = time.perf_counter()
+        model_output = await generate_with_ollama_fast(prompt)
+
+        logger.info(
+            f"[{request_id}] ollama fast response received llm_sec={time.perf_counter() - llm_started:.3f} "
+            f"output_len={len(model_output) if model_output else 0}"
+        )
+
+        try:
+            parsed = json.loads(model_output)
+            logger.info(f"[{request_id}] fast model output parsed as JSON successfully")
+        except JSONDecodeError:
+            logger.warning(f"[{request_id}] fast model output is not valid JSON, fallback raw_output used")
+            parsed = {
+                "call_topic": "unknown",
+                "call_purpose": "unknown",
+                "customer_request": "unknown",
+                "product_or_service": "unknown",
+                "key_points": [],
+                "price_discussed": False,
+                "next_step": "unknown",
+                "call_outcome": "unknown",
+                "customer_sentiment": "unknown",
+                "analysis_confidence": "low",
+                "raw_output": model_output,
+            }
+
+        logger.info(
+            f"[{request_id}] /analyze-text-fast completed successfully total_sec={time.perf_counter() - started_at:.3f}"
+        )
+
+        return {
+            "status": "ok",
+            "model": settings.llm_model_name,
+            "call_id": payload.call_id,
+            "analysis": {
+                "call_topic": parsed.get("call_topic"),
+                "call_purpose": parsed.get("call_purpose"),
+                "customer_request": parsed.get("customer_request"),
+                "product_or_service": parsed.get("product_or_service"),
+                "key_points": parsed.get("key_points") or [],
+                "price_discussed": parsed.get("price_discussed"),
+                "next_step": parsed.get("next_step"),
+                "call_outcome": parsed.get("call_outcome"),
+                "customer_sentiment": parsed.get("customer_sentiment"),
+                "analysis_confidence": parsed.get("analysis_confidence"),
+                "raw_output": parsed.get("raw_output"),
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception(f"[{request_id}] /analyze-text-fast failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Fast text analysis failed: {str(exc)}")
