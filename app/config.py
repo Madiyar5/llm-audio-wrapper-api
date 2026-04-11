@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://ollama:11434"
     llm_model_name: str = "qwen2.5:14b"
     ollama_timeout: int = 240
-
+    ollama_keep_alive: str = "30m"
+    
     whisper_model_size: str = "large-v3"
     whisper_compute_type: str = "int8"
     upload_dir: str = "/opt/llm/data/tmp_uploads"

@@ -21,28 +21,25 @@ def build_analysis_prompt(
     }
 
     return f"""
-You are an expert call-analysis assistant for CRM customer phone calls.
+Ты — аналитик клиентских звонков в CRM.
 
-You will receive:
-1) the main transcript,
-2) optional alternative transcript hypotheses,
-3) detected language info,
-4) optional metadata.
+Тебе передаются:
+1) основной транскрипт,
+2) возможные альтернативные версии транскрипта,
+3) информация о языке,
+4) дополнительные метаданные.
 
-Your job:
-- reconstruct the most probable readable transcript,
-- keep only information supported by the transcript hypotheses,
-- do NOT invent facts,
-- if a fragment is unclear, mark it as [неразборчиво],
-- preserve Russian and Kazakh text as-is in cleaned_transcript,
-- then analyze the phone call.
+Твоя задача:
+- восстановить максимально вероятную читаемую версию разговора,
+- использовать только ту информацию, которая подтверждается транскриптом,
+- ничего не выдумывать,
+- если фрагмент неразборчив, помечать его как [неразборчиво],
+- сохранить cleaned_transcript в исходном языке разговора,
+- все аналитические поля вернуть на русском языке.
 
-Language rules:
-- cleaned_transcript must stay in the original language of the conversation,
-- ALL analytical fields must be returned in Russian,
-- if there is not enough evidence, use "unknown".
+Если информации недостаточно, указывай "unknown".
 
-Return ONLY valid JSON with this exact structure:
+Верни ТОЛЬКО валидный JSON строго такой структуры:
 
 {{
   "cleaned_transcript": "string",
@@ -63,14 +60,13 @@ Return ONLY valid JSON with this exact structure:
   "notes": ["string"]
 }}
 
-Rules:
-- If transcript quality is poor, explicitly say so.
-- Do not guess product names, prices, or outcomes unless supported by transcript text.
-- Prefer conservative analysis over hallucination.
-- manager_quality_score must be an integer from 0 to 10.
-- price_discussed must be true or false.
+Правила:
+- Не выдумывай название продукта, цену или исход звонка, если этого нет в транскрипте.
+- Отдавай предпочтение осторожному анализу, а не галлюцинациям.
+- manager_quality_score должен быть целым числом от 0 до 10.
+- price_discussed должен быть true или false.
 
-Input:
+Вход:
 {json.dumps(payload, ensure_ascii=False, indent=2)}
 """.strip()
 
@@ -88,24 +84,11 @@ def build_fast_analysis_prompt(
 Ты — аналитик клиентских звонков.
 
 Ниже дан уже готовый транскрипт звонка.
-Верни только валидный JSON на русском языке.
+Нужно вернуть только краткий аналитический JSON на русском языке.
 Не выдумывай факты.
 Если информации недостаточно, пиши "unknown".
 
-Верни JSON строго такого вида:
-
-{{
-  "call_topic": "string",
-  "call_purpose": "string",
-  "customer_request": "string",
-  "product_or_service": "string",
-  "key_points": ["string"],
-  "price_discussed": true,
-  "next_step": "string",
-  "call_outcome": "string",
-  "customer_sentiment": "positive|neutral|negative|mixed|unknown",
-  "analysis_confidence": "high|medium|low"
-}}
+Верни только JSON.
 
 Вход:
 {json.dumps(payload, ensure_ascii=False, indent=2)}
