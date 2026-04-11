@@ -12,6 +12,24 @@ from app.ollama_client import generate_with_ollama
 from app.prompts import build_analysis_prompt
 from app.transcription import transcribe_audio
 from app.utils import delete_file_safely, preprocess_audio_ffmpeg, save_upload_file
+from pydantic import BaseModel, Field
+
+class AnalyzeTextRequest(BaseModel):
+    call_id: str | None = None
+    conversation_type: str = "crm_customer_call"
+    detected_language: str | None = None
+    mixed_language: bool = False
+    language_hint: str | None = None
+    transcript: str = Field(..., min_length=1)
+    alternatives: dict = Field(default_factory=dict)
+    metadata: dict = Field(default_factory=dict)
+
+
+class AnalyzeTextResponse(BaseModel):
+    status: str
+    model: str
+    call_id: str | None = None
+    analysis: dict
 
 
 router = APIRouter(tags=["analysis"])
@@ -226,3 +244,103 @@ async def analyze_audio(file: UploadFile = File(...)):
         if file_path:
             logger.info(f"[{request_id}] deleting temp file path={file_path}")
             delete_file_safely(file_path)
+
+
+
+@router.post("/analyze-text", response_model=AnalyzeTextResponse)
+async def analyze_text(payload: AnalyzeTextRequest):
+    request_id = str(uuid.uuid4())[:8]
+    started_at = time.perf_counter()
+
+    logger.info(
+        f"[{request_id}] /analyze-text request received "
+        f"call_id={payload.call_id} detected_language={payload.detected_language} "
+        f"mixed_language={payload.mixed_language}"
+    )
+
+    try:
+        transcript = payload.transcript.strip()
+        alternatives = payload.alternatives or {}
+
+        if not transcript and not any(alternatives.values()):
+            logger.warning(f"[{request_id}] empty transcript payload")
+            raise HTTPException(status_code=400, detail="Transcript is empty")
+
+        prompt = build_analysis_prompt(
+            transcript=transcript,
+            alternatives=alternatives,
+            detected_language=payload.detected_language,
+            mixed_language=payload.mixed_language,
+            language_hint=payload.language_hint,
+            conversation_type=payload.conversation_type,
+            metadata=payload.metadata,
+        )
+
+        logger.info(f"[{request_id}] calling ollama started")
+        llm_started = time.perf_counter()
+        model_output = await generate_with_ollama(prompt)
+
+        logger.info(
+            f"[{request_id}] ollama response received llm_sec={time.perf_counter() - llm_started:.3f} "
+            f"output_len={len(model_output) if model_output else 0}"
+        )
+
+        try:
+            parsed = json.loads(model_output)
+            logger.info(f"[{request_id}] model output parsed as JSON successfully")
+        except JSONDecodeError:
+            logger.warning(f"[{request_id}] model output is not valid JSON, fallback raw_output used")
+            parsed = {
+                "cleaned_transcript": transcript,
+                "call_topic": "unknown",
+                "call_purpose": "unknown",
+                "customer_request": "unknown",
+                "product_or_service": "unknown",
+                "key_points": [],
+                "objections": [],
+                "price_discussed": False,
+                "price_details": "unknown",
+                "next_step": "unknown",
+                "call_outcome": "unknown",
+                "customer_sentiment": "unknown",
+                "manager_quality_score": 0,
+                "transcript_quality": "low",
+                "analysis_confidence": "low",
+                "notes": ["LLM returned non-JSON output"],
+                "raw_output": model_output,
+            }
+
+        logger.info(
+            f"[{request_id}] /analyze-text completed successfully total_sec={time.perf_counter() - started_at:.3f}"
+        )
+
+        return {
+            "status": "ok",
+            "model": settings.llm_model_name,
+            "call_id": payload.call_id,
+            "analysis": {
+                "cleaned_transcript": parsed.get("cleaned_transcript"),
+                "call_topic": parsed.get("call_topic"),
+                "call_purpose": parsed.get("call_purpose"),
+                "customer_request": parsed.get("customer_request"),
+                "product_or_service": parsed.get("product_or_service"),
+                "key_points": parsed.get("key_points") or [],
+                "objections": parsed.get("objections") or [],
+                "price_discussed": parsed.get("price_discussed"),
+                "price_details": parsed.get("price_details"),
+                "next_step": parsed.get("next_step"),
+                "call_outcome": parsed.get("call_outcome"),
+                "customer_sentiment": parsed.get("customer_sentiment"),
+                "manager_quality_score": parsed.get("manager_quality_score"),
+                "transcript_quality": parsed.get("transcript_quality"),
+                "analysis_confidence": parsed.get("analysis_confidence"),
+                "notes": parsed.get("notes") or [],
+                "raw_output": parsed.get("raw_output"),
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception(f"[{request_id}] /analyze-text failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Text analysis failed: {str(exc)}")

@@ -2,25 +2,32 @@ import json
 
 
 def build_analysis_prompt(
-    best_text: str,
-    alternatives: dict,
+    transcript: str,
+    alternatives: dict | None,
     detected_language: str | None,
+    mixed_language: bool = False,
+    language_hint: str | None = None,
     conversation_type: str = "crm_customer_call",
+    metadata: dict | None = None,
 ) -> str:
     payload = {
         "detected_language": detected_language,
-        "best_text": best_text,
-        "alternatives": alternatives,
+        "mixed_language": mixed_language,
+        "language_hint": language_hint,
+        "transcript": transcript,
+        "alternatives": alternatives or {},
         "conversation_type": conversation_type,
+        "metadata": metadata or {},
     }
 
     return f"""
 You are an expert call-analysis assistant for CRM customer phone calls.
 
 You will receive:
-1) the best automatic transcript hypothesis,
-2) alternative transcript hypotheses for the same audio,
-3) the detected language.
+1) the main transcript,
+2) optional alternative transcript hypotheses,
+3) detected language info,
+4) optional metadata.
 
 Your job:
 - reconstruct the most probable readable transcript,
