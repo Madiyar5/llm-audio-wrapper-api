@@ -1,10 +1,8 @@
 import logging
 import time
-
 import httpx
 
 from app.config import settings
-
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +62,11 @@ FULL_ANALYSIS_SCHEMA = {
             "type": "string",
             "enum": ["positive", "neutral", "negative", "mixed", "unknown"]
         },
-        "manager_quality_score": {"type": "integer"},
+        "manager_quality_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+        },
         "transcript_quality": {
             "type": "string",
             "enum": ["high", "medium", "low"]
