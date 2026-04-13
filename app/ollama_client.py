@@ -5,7 +5,6 @@ import httpx
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
 FAST_ANALYSIS_SCHEMA = {
     "type": "object",
     "properties": {
