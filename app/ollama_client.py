@@ -46,7 +46,6 @@ FAST_ANALYSIS_SCHEMA = {
 FULL_ANALYSIS_SCHEMA = {
     "type": "object",
     "properties": {
-        "cleaned_transcript": {"type": "string"},
         "call_topic": {"type": "string"},
         "call_purpose": {"type": "string"},
         "customer_request": {"type": "string"},
@@ -86,7 +85,6 @@ FULL_ANALYSIS_SCHEMA = {
         }
     },
     "required": [
-        "cleaned_transcript",
         "call_topic",
         "call_purpose",
         "customer_request",
