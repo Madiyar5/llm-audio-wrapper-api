@@ -180,7 +180,7 @@ async def generate_with_ollama_fast(prompt: str) -> str:
         options={
             "temperature": 0,
             "top_p": 0.9,
-            "num_predict": 420,
+            "num_predict": 200,
             "num_ctx": 1024,
             "repeat_penalty": 1.08,
         },
