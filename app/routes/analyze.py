@@ -300,7 +300,6 @@ async def analyze_text(payload: AnalyzeTextRequest):
         except JSONDecodeError:
             logger.warning(f"[{request_id}] model output is not valid JSON, fallback raw_output used")
             parsed = {
-                "cleaned_transcript": transcript,
                 "call_topic": "unknown",
                 "call_purpose": "unknown",
                 "customer_request": "unknown",
@@ -328,7 +327,6 @@ async def analyze_text(payload: AnalyzeTextRequest):
             "model": settings.llm_model_name,
             "call_id": payload.call_id,
             "analysis": {
-                "cleaned_transcript": parsed.get("cleaned_transcript"),
                 "call_topic": parsed.get("call_topic"),
                 "call_purpose": parsed.get("call_purpose"),
                 "customer_request": parsed.get("customer_request"),
@@ -403,6 +401,7 @@ async def analyze_text_fast(payload: AnalyzeTextRequest):
                 "call_outcome": "unknown",
                 "customer_sentiment": "unknown",
                 "analysis_confidence": "low",
+                "manager_quality_score": 0,
                 "raw_output": model_output,
             }
 
@@ -425,6 +424,7 @@ async def analyze_text_fast(payload: AnalyzeTextRequest):
                 "call_outcome": parsed.get("call_outcome"),
                 "customer_sentiment": parsed.get("customer_sentiment"),
                 "analysis_confidence": parsed.get("analysis_confidence"),
+                "manager_quality_score": parsed.get("manager_quality_score"),
                 "raw_output": parsed.get("raw_output"),
             },
         }
