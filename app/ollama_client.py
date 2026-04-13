@@ -6,7 +6,6 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-
 FAST_ANALYSIS_SCHEMA = {
     "type": "object",
     "properties": {
@@ -38,7 +37,8 @@ FAST_ANALYSIS_SCHEMA = {
         "price_discussed",
         "call_outcome",
         "customer_sentiment",
-        "analysis_confidence"
+        "analysis_confidence",
+        "manager_quality_score"
     ]
 }
 
