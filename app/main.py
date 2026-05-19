@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.routes.analyze import router as analyze_router
@@ -41,3 +42,5 @@ async def unhandled_exception_handler(request, exc):
             "detail": f"Internal server error: {str(exc)}"
         },
     )
+
+app.mount("/site", StaticFiles(directory="site", html=True), name="friends_project")

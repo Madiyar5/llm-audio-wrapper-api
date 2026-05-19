@@ -6,3 +6,4 @@ faster-whisper==1.1.1
 pydantic==2.11.3
 pydantic-settings==2.8.1
 requests==2.32.3
+aiofiles>=23.0.0

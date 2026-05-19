@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AB/LAB — A/B Testing Platform | Narkhoz 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--c:#00e5ff;--p:#ff3cac;--g:#4dff91;--bg:#060912;--bg2:#0c1220;--bd:rgba(0,229,255,0.15);}
+html{scroll-behavior:smooth;}
+body{font-family:'Courier New',monospace;background:var(--bg);color:#e8f4ff;min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:rgba(0,229,255,.03)}::-webkit-scrollbar-thumb{background:rgba(0,229,255,.3);border-radius:2px}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{box-shadow:0 0 8px rgba(0,229,255,.15)}50%{box-shadow:0 0 32px rgba(0,229,255,.55),0 0 60px rgba(0,229,255,.15)}}
+@keyframes glowP{0%,100%{box-shadow:0 0 8px rgba(255,60,172,.12)}50%{box-shadow:0 0 28px rgba(255,60,172,.5)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes floatR{0%,100%{transform:translateY(0) rotate(1.5deg)}50%{transform:translateY(-9px) rotate(-1deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes borderPulse{0%,100%{border-color:rgba(0,229,255,.15)}50%{border-color:rgba(0,229,255,.5)}}
+@keyframes countUp{from{transform:scale(.75);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes gradMove{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes scanMove{0%{background-position:0 0}100%{background-position:0 200px}}
+@keyframes msgIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes typewrite{from{width:0}to{width:100%}}
+@keyframes winPop{0%{transform:scale(.8);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+
+/* ── NAV ── */
+#nav{position:sticky;top:0;z-index:99;background:rgba(6,9,18,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd);padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;height:56px;flex-wrap:wrap;gap:.5rem;}
+.logo{font-weight:700;letter-spacing:.28em;font-size:.82rem;flex-shrink:0;cursor:pointer;}
+.logo .lc{color:var(--c);text-shadow:0 0 14px var(--c);}
+.logo .lp{color:var(--p);}
+.navs{display:flex;gap:0;align-items:center;flex-wrap:wrap;}
+.nl{cursor:pointer;padding:.45rem .72rem;color:rgba(255,255,255,.38);border-bottom:2px solid transparent;font-size:.67rem;letter-spacing:.12em;text-transform:uppercase;transition:all .25s;white-space:nowrap;}
+.nl:hover,.nl.active{color:var(--c);}
+.nl.active{border-bottom-color:var(--c);text-shadow:0 0 10px var(--c);}
+.music-btn{cursor:pointer;padding:.35rem .75rem;border:1px solid var(--bd);border-radius:6px;font-size:.67rem;letter-spacing:.1em;text-transform:uppercase;transition:all .25s;color:var(--c);background:rgba(0,229,255,.07);flex-shrink:0;}
+.music-btn.on{color:var(--p);border-color:var(--p);background:rgba(255,60,172,.1);text-shadow:0 0 8px var(--p);}
+.music-btn:hover{box-shadow:0 0 14px rgba(0,229,255,.25);}
+
+/* ── CANVAS ── */
+#ptc{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.65;}
+.scan{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,229,255,.012) 3px,rgba(0,229,255,.012) 4px);}
+
+/* ── SECTIONS ── */
+.sec{max-width:960px;margin:0 auto;padding:3.5rem 1.5rem;display:none;position:relative;z-index:1;}
+.sec.show{display:block;animation:fadeUp .42s ease;}
+#hero.show{display:block;}
+.hero-wrap{max-width:960px;margin:0 auto;padding:5rem 1.5rem 3.5rem;position:relative;z-index:1;}
+
+/* ── TYPOGRAPHY ── */
+.grad-text{background:linear-gradient(90deg,#00e5ff,#ff3cac,#00e5ff);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 4s linear infinite;}
+.ptag{font-size:.68rem;color:var(--c);letter-spacing:.38em;margin-bottom:.5rem;text-transform:uppercase;opacity:.8;}
+.ph{font-size:1.7rem;font-weight:700;margin-bottom:2rem;text-transform:uppercase;}
+
+/* ── CARDS ── */
+.card{background:rgba(255,255,255,.04);border:1px solid var(--bd);border-radius:12px;padding:1.5rem;margin-bottom:1rem;transition:all .3s;}
+.card:hover{border-color:rgba(0,229,255,.35);transform:translateY(-2px);}
+.card.no-hover:hover{transform:none;}
+.card.win{text-align:center;padding:2rem;animation:winPop .5s ease,glow 3s ease-in-out 0.5s infinite;}
+.card.glow-c{animation:glow 3s ease-in-out infinite;}
+.card.glow-p{animation:glowP 3s ease-in-out infinite;}
+.card.border-anim{animation:borderPulse 3s ease-in-out infinite;}
+.card.float-el{animation:float 4s ease-in-out infinite;}
+
+/* ── STAT CARDS ── */
+.sc{background:rgba(0,229,255,.04);border:1px solid var(--bd);border-radius:10px;padding:1.25rem;text-align:center;animation:countUp .5s ease both;}
+.sc-l{font-size:.61rem;color:rgba(255,255,255,.33);letter-spacing:.13em;text-transform:uppercase;margin-bottom:.5rem;font-family:system-ui;}
+.sc-v{font-size:1.4rem;font-weight:700;}
+
+/* ── INPUTS ── */
+label{display:block;font-size:.67rem;color:rgba(0,229,255,.6);letter-spacing:.15em;text-transform:uppercase;margin-bottom:.4rem;}
+input,textarea,select{background:rgba(0,229,255,.04);border:1px solid var(--bd);border-radius:8px;padding:.7rem 1rem;color:#e8f4ff;font-family:'Courier New',monospace;font-size:.88rem;width:100%;outline:none;transition:border-color .2s;}
+input:focus,textarea:focus,select:focus{border-color:rgba(0,229,255,.5);}
+textarea{resize:vertical;min-height:110px;}
+.mb{margin-bottom:.8rem;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;}
+
+/* ── BUTTONS ── */
+.btn{display:inline-block;background:transparent;border:1px solid var(--c);color:var(--c);padding:.7rem 1.5rem;border-radius:8px;cursor:pointer;font-family:'Courier New',monospace;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;transition:all .25s;}
+.btn:hover{box-shadow:0 0 20px rgba(0,229,255,.3);transform:translateY(-1px);}
+.btn.f{background:rgba(0,229,255,.1);}
+.btn.p{border-color:var(--p);color:var(--p);}
+.btn.p:hover{box-shadow:0 0 20px rgba(255,60,172,.3);}
+.btn.pf{background:rgba(255,60,172,.09);}
+.btn.g2{border-color:rgba(255,255,255,.22);color:rgba(255,255,255,.5);}
+.btn.lg{padding:1rem 3rem;font-size:.9rem;}
+.btn-row{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:2rem;}
+
+/* ── VARIANT PANELS ── */
+.vp{background:rgba(255,255,255,.04);border:1px solid rgba(180,190,255,.18);border-radius:12px;padding:1.5rem;transition:all .3s;}
+.vp.b{border-color:var(--bd);animation:borderPulse 3s ease-in-out infinite;}
+.vp-lbl{font-size:.67rem;letter-spacing:.2em;margin-bottom:1.25rem;font-weight:600;text-transform:uppercase;}
+
+/* ── LIVE PREVIEW ── */
+.live-box{background:rgba(0,229,255,.03);border:1px solid rgba(0,229,255,.25);border-radius:12px;padding:1.25rem;text-align:center;margin-bottom:1rem;animation:glow 3s ease-in-out infinite;}
+.live-row{display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;}
+.live-item .ll{font-size:.65rem;color:rgba(255,255,255,.38);margin-bottom:.3rem;font-family:system-ui;}
+.live-item .lv{font-size:1.8rem;font-weight:700;}
+
+/* ── CI BARS ── */
+.ci-track{position:relative;height:10px;background:rgba(255,255,255,.06);border-radius:5px;margin:.55rem 0 1.5rem;}
+.ci-fill{position:absolute;height:100%;border-radius:5px;opacity:.65;}
+.ci-mark{position:absolute;top:0;width:3px;height:100%;border-radius:2px;z-index:2;transform:translateX(-50%);}
+
+/* ── CHARTS ── */
+.ch-wrap{position:relative;width:100%;height:200px;}
+.ch-title{font-size:.69rem;color:var(--c);letter-spacing:.15em;margin-bottom:1rem;text-transform:uppercase;}
+.legend{display:flex;gap:1.5rem;margin-top:.75rem;font-size:.73rem;font-family:system-ui;}
+.leg-i{display:flex;align-items:center;gap:6px;color:rgba(255,255,255,.45);}
+.leg-line{width:20px;height:3px;border-radius:2px;display:inline-block;}
+
+/* ── TABLE ── */
+.dtable{width:100%;border-collapse:collapse;font-family:system-ui;font-size:.83rem;}
+.dtable th{padding:.6rem .8rem;color:rgba(0,229,255,.8);font-size:.67rem;letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid rgba(0,229,255,.2);text-align:left;font-family:'Courier New',monospace;}
+.dtable td{padding:.55rem .8rem;border-bottom:1px solid rgba(255,255,255,.04);color:rgba(255,255,255,.7);}
+.dtable tr:hover td{background:rgba(0,229,255,.03);}
+
+/* ── CHAT ── */
+.chat-box{height:380px;overflow-y:auto;margin-bottom:1rem;display:flex;flex-direction:column;gap:.8rem;padding-right:.25rem;}
+.msg{display:flex;gap:.7rem;align-items:flex-start;animation:msgIn .3s ease;}
+.msg.u{flex-direction:row-reverse;}
+.av{width:30px;height:30px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.78rem;border:1px solid var(--bd);background:rgba(0,229,255,.1);}
+.msg.u .av{background:rgba(255,60,172,.15);border-color:var(--p);}
+.bub{max-width:78%;border:1px solid var(--bd);border-radius:10px;padding:.65rem .95rem;font-family:system-ui;font-size:.82rem;line-height:1.78;color:rgba(255,255,255,.82);white-space:pre-wrap;background:rgba(0,229,255,.04);}
+.msg.u .bub{background:rgba(255,60,172,.07);border-color:rgba(255,60,172,.15);}
+.chat-in{display:flex;gap:.75rem;}
+.tydot{color:var(--c);font-size:.73rem;letter-spacing:.15em;animation:pulse 1.2s infinite;}
+.qb{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.55);padding:.35rem .8rem;border-radius:8px;cursor:pointer;font-size:.71rem;font-family:'Courier New',monospace;transition:all .2s;margin:.25rem .25rem 0 0;}
+.qb:hover{border-color:var(--c);color:var(--c);}
+
+/* ── AI PANEL ── */
+.ai-text{font-family:system-ui;line-height:1.9;color:rgba(255,255,255,.78);font-size:.87rem;white-space:pre-wrap;}
+.ai-loader{text-align:center;padding:3rem;}
+.spin{display:inline-block;width:36px;height:36px;border:2px solid rgba(0,229,255,.2);border-top:2px solid var(--c);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:1rem;}
+.ai-bar{width:0;height:3px;background:linear-gradient(90deg,var(--c),var(--p));border-radius:2px;transition:width .15s ease;}
+
+/* ── FEAT CARDS ── */
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;}
+.feat{background:rgba(255,255,255,.04);border:1px solid var(--bd);border-radius:12px;padding:1.5rem;transition:all .3s;cursor:default;animation:borderPulse 3s ease-in-out infinite;}
+.feat:hover{border-color:rgba(0,229,255,.45);transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,229,255,.1);}
+.feat-ic{font-size:1.8rem;margin-bottom:.75rem;}
+.feat-t{font-weight:700;color:var(--c);font-size:.8rem;margin-bottom:.4rem;letter-spacing:.05em;text-shadow:0 0 8px rgba(0,229,255,.4);}
+.feat-d{font-size:.76rem;color:rgba(255,255,255,.42);font-family:system-ui;line-height:1.7;}
+
+/* ── TEAM CARDS ── */
+.team-card{background:rgba(255,255,255,.04);border:1px solid var(--bd);border-radius:16px;padding:1.75rem;text-align:center;transition:all .3s;cursor:default;}
+.team-card:hover{border-color:rgba(0,229,255,.45);transform:translateY(-4px);box-shadow:0 10px 35px rgba(0,229,255,.12);}
+.team-av{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,rgba(0,229,255,.2),rgba(255,60,172,.2));border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.6rem;}
+.team-name{font-size:1rem;font-weight:700;color:var(--c);margin-bottom:.3rem;letter-spacing:.05em;text-shadow:0 0 10px rgba(0,229,255,.4);}
+
+/* ── INFO LIST ── */
+.ilist{list-style:none;}
+.ilist li{display:flex;gap:.75rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.04);color:rgba(255,255,255,.62);font-family:system-ui;font-size:.82rem;line-height:1.6;}
+.ilist li span:first-child{font-size:1rem;flex-shrink:0;width:22px;}
+
+/* ── SOCIAL ── */
+.socials{display:flex;gap:.65rem;flex-wrap:wrap;}
+.soc{width:36px;height:36px;border:1px solid rgba(255,255,255,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.88rem;cursor:pointer;transition:all .2s;color:rgba(255,255,255,.45);}
+.soc:hover{border-color:var(--c);color:var(--c);box-shadow:0 0 12px rgba(0,229,255,.2);}
+
+/* ── FOOTER ── */
+footer{background:var(--bg2);border-top:1px solid var(--bd);padding:3rem 1.5rem 1.5rem;position:relative;z-index:1;}
+.ft-inner{max-width:960px;margin:0 auto;}
+.ft-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:2rem;margin-bottom:2rem;}
+.ft-col h4{font-size:.72rem;color:var(--c);letter-spacing:.2em;text-transform:uppercase;margin-bottom:1rem;text-shadow:0 0 8px rgba(0,229,255,.35);}
+.ft-col p,.ft-col li{font-family:system-ui;font-size:.8rem;color:rgba(255,255,255,.42);line-height:1.9;}
+.ft-col ul{list-style:none;}
+.ft-col a{color:rgba(255,255,255,.42);text-decoration:none;transition:color .2s;cursor:pointer;}
+.ft-col a:hover{color:var(--c);}
+.ft-bottom{border-top:1px solid rgba(255,255,255,.06);padding-top:1.5rem;display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;align-items:center;}
+.ft-copy{font-family:system-ui;font-size:.75rem;color:rgba(255,255,255,.25);line-height:1.9;}
+.ft-copy strong{color:rgba(255,255,255,.45);}
+.back-top{cursor:pointer;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.25);border-radius:8px;padding:.45rem 1rem;font-size:.72rem;color:var(--c);font-family:'Courier New',monospace;letter-spacing:.1em;text-transform:uppercase;transition:all .2s;}
+.back-top:hover{background:rgba(0,229,255,.18);box-shadow:0 0 14px rgba(0,229,255,.2);}
+
+/* ── AI ILLUSTRATIONS ── */
+.ai-vis{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem;margin-bottom:2.5rem;}
+.ai-img{background:linear-gradient(135deg,#0a1628,#0d1f35);border:1px solid var(--bd);border-radius:16px;overflow:hidden;aspect-ratio:16/9;position:relative;transition:all .3s;}
+.ai-img:hover{border-color:rgba(0,229,255,.4);transform:translateY(-3px);box-shadow:0 10px 35px rgba(0,229,255,.1);}
+.ai-badge{position:absolute;top:.75rem;right:.75rem;border-radius:6px;font-size:.6rem;padding:.25rem .6rem;letter-spacing:.1em;text-transform:uppercase;}
+
+/* ── ERR ── */
+.err{color:var(--p);font-size:.78rem;text-align:center;margin:.5rem 0;font-family:system-ui;}
+
+/* ── Responsive ── */
+@media(max-width:660px){.grid2,.grid4,.grid3{grid-template-columns:1fr;}.navs{display:none;}}
+</style>
+</head>
+<body>
+
+<!-- Particle canvas -->
+<canvas id="ptc"></canvas>
+<div class="scan"></div>
+
+<!-- NAV -->
+<div id="nav">
+  <div class="logo" onclick="go('hero')"><span class="lc">AB</span><span class="lp">/</span><span class="lc">LAB</span></div>
+  <div class="navs">
+    <span class="nl active" data-pg="hero" onclick="go('hero')">Home</span>
+    <span class="nl" data-pg="about" onclick="go('about')">Туралы</span>
+    <span class="nl" data-pg="lab" onclick="go('lab')">Lab</span>
+    <span class="nl" data-pg="results" onclick="go('results')">Results</span>
+    <span class="nl" data-pg="ai" onclick="go('ai')">AI Agent</span>
+    <span class="nl" data-pg="chat" onclick="go('chat')">Chat</span>
+    <span class="nl" data-pg="contact" onclick="go('contact')">Байланыс</span>
+  </div>
+  <div id="musicBtn" class="music-btn" onclick="toggleMusic()">♪ MUSIC</div>
+</div>
+
+<!-- ══ HERO ══ -->
+<div class="sec" id="hero">
+<div class="hero-wrap" style="padding-top:5rem">
+  <div class="ptag">[ A/B TESTING PLATFORM — NARKHOZ UNIVERSITY 2026 ]</div>
+  <div style="font-size:clamp(2.8rem,7.5vw,5.2rem);font-weight:900;line-height:1.05;margin-bottom:1.5rem;letter-spacing:-.02em">
+    <span class="grad-text">Деректерге</span><br>
+    <span style="color:rgba(255,255,255,.85)">негізделген</span><br>
+    <span style="color:var(--p);text-shadow:0 0 30px rgba(255,60,172,.4)">шешімдер</span>
+  </div>
+  <div style="font-size:.78rem;color:var(--c);margin-bottom:1.5rem;opacity:.6;letter-spacing:.05em;min-height:1.2rem">
+    <span id="typed"></span><span style="animation:blink 1s infinite;display:inline">█</span>
+  </div>
+  <p style="color:rgba(255,255,255,.46);line-height:1.95;max-width:530px;margin-bottom:2.5rem;font-family:system-ui;font-size:.92rem">
+    A/B тестіңіздің деректерін өзіңіз енгізіңіз — сайт статистикалық маңыздылықты автоматты есептейді, AI агент бизнес-сараптама береді, кез-келген сұраққа жауап алыңыз.
+  </p>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:4rem">
+    <button class="btn f lg" onclick="go('lab')" style="animation:glow 3s ease-in-out infinite">▶ Тест бастау</button>
+    <button class="btn p pf" style="padding:.9rem 2rem" onclick="toggleMusic()">♪ Synthwave музыкасы</button>
+    <button class="btn g2" style="padding:.9rem 2rem" onclick="go('about')">Толығырақ →</button>
+  </div>
+
+  <div class="ptag" style="margin-bottom:.9rem">[ AI Иллюстрациялар ]</div>
+  <div class="ai-vis">
+    <div class="ai-img" style="animation:float 4s ease-in-out infinite">
+      <svg viewBox="0 0 400 220" style="width:100%;height:100%;position:absolute;inset:0" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="g1" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#00e5ff" stop-opacity=".22"/><stop offset="100%" stop-color="#ff3cac" stop-opacity=".07"/></linearGradient></defs>
+        <rect width="400" height="220" fill="url(#g1)"/>
+        <polygon points="50,28 350,28 292,80 108,80" fill="rgba(0,229,255,.17)" stroke="rgba(0,229,255,.55)" stroke-width="1.2"/>
+        <polygon points="108,90 292,90 256,130 144,130" fill="rgba(0,229,255,.12)" stroke="rgba(0,229,255,.4)" stroke-width="1"/>
+        <polygon points="144,140 256,140 230,174 170,174" fill="rgba(255,60,172,.18)" stroke="rgba(255,60,172,.55)" stroke-width="1.2"/>
+        <text x="200" y="57" fill="rgba(0,229,255,.9)" text-anchor="middle" font-size="11" font-family="Courier New">Посетитель</text>
+        <text x="200" y="113" fill="rgba(0,229,255,.75)" text-anchor="middle" font-size="11" font-family="Courier New">Қызығушылық</text>
+        <text x="200" y="160" fill="rgba(255,60,172,.9)" text-anchor="middle" font-size="11" font-family="Courier New">Конверсия</text>
+        <text x="200" y="205" fill="rgba(255,255,255,.2)" text-anchor="middle" font-size="9" font-family="Courier New">A/B Test Conversion Funnel</text>
+      </svg>
+      <div class="ai-badge" style="background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.3);color:var(--c)">AI VISUAL</div>
+    </div>
+    <div class="ai-img" style="animation:floatR 5s ease-in-out infinite">
+      <svg viewBox="0 0 400 220" style="width:100%;height:100%;position:absolute;inset:0" xmlns="http://www.w3.org/2000/svg">
+        <rect width="400" height="220" fill="rgba(8,14,26,.9)"/>
+        <line x1="42" y1="30" x2="42" y2="182" stroke="rgba(0,229,255,.1)" stroke-width="1"/>
+        <line x1="42" y1="182" x2="375" y2="182" stroke="rgba(0,229,255,.1)" stroke-width="1"/>
+        <line x1="42" y1="146" x2="375" y2="146" stroke="rgba(0,229,255,.05)" stroke-width=".5" stroke-dasharray="4,4"/>
+        <line x1="42" y1="110" x2="375" y2="110" stroke="rgba(0,229,255,.05)" stroke-width=".5" stroke-dasharray="4,4"/>
+        <line x1="42" y1="74" x2="375" y2="74" stroke="rgba(0,229,255,.05)" stroke-width=".5" stroke-dasharray="4,4"/>
+        <polyline points="42,164 110,150 178,136 246,122 314,110 375,100" fill="none" stroke="rgba(125,135,255,.75)" stroke-width="2" stroke-linecap="round"/>
+        <polyline points="42,164 110,144 178,120 246,97 314,72 375,48" fill="none" stroke="rgba(0,229,255,.9)" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="375" cy="100" r="4" fill="rgba(125,135,255,.9)"/>
+        <circle cx="375" cy="48" r="5" fill="rgba(0,229,255,.9)"/>
+        <text x="387" y="103" fill="rgba(125,135,255,.9)" font-size="9" font-family="Courier New">A</text>
+        <text x="387" y="51" fill="rgba(0,229,255,.9)" font-size="9" font-family="Courier New">B</text>
+        <text x="200" y="205" fill="rgba(255,255,255,.2)" text-anchor="middle" font-size="9" font-family="Courier New">CVR Trend: Control vs Variant</text>
+      </svg>
+      <div class="ai-badge" style="background:rgba(255,60,172,.12);border:1px solid rgba(255,60,172,.3);color:var(--p)">AI VISUAL</div>
+    </div>
+  </div>
+
+  <div class="feat-grid">
+    <div class="feat" style="animation-delay:.0s"><div class="feat-ic" style="animation:float 3s ease-in-out infinite">📊</div><div class="feat-t">Z-тест & p-мән</div><div class="feat-d">Статистикалық маңыздылықты дәл есептейді</div></div>
+    <div class="feat" style="animation-delay:.5s"><div class="feat-ic" style="animation:float 3.5s ease-in-out infinite">🎯</div><div class="feat-t">95% CI</div><div class="feat-d">Сенімділік аралықтарын визуализациялайды</div></div>
+    <div class="feat" style="animation-delay:1s"><div class="feat-ic" style="animation:float 4s ease-in-out infinite">🤖</div><div class="feat-t">AI Agent</div><div class="feat-d">Нәтижені бизнес тілінде талдайды</div></div>
+    <div class="feat" style="animation-delay:1.5s"><div class="feat-ic" style="animation:float 4.5s ease-in-out infinite">💬</div><div class="feat-t">AI Chatbot</div><div class="feat-d">Кез-келген сұраққа жауап береді</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ══ ABOUT ══ -->
+<div class="sec" id="about">
+  <div class="ptag">[ Аналитикалық мәтін ]</div>
+  <div class="ph"><span class="grad-text">📖 A/B Тестілеу туралы</span></div>
+
+  <div class="card border-anim">
+    <div style="color:var(--c);font-size:.9rem;font-weight:700;letter-spacing:.08em;margin-bottom:.9rem;text-transform:uppercase;text-shadow:0 0 8px rgba(0,229,255,.4)">A/B тестілеу дегеніміз не?</div>
+    <p style="font-family:system-ui;font-size:.88rem;color:rgba(255,255,255,.68);line-height:1.95;margin-bottom:.9rem">A/B тестілеу (сплит-тестілеу) — веб-сайт, мобильді қолданба немесе маркетингтік материалдардың екі нұсқасын бір-бірімен салыстырып, қайсысының тиімдірек екенін статистикалық тұрғыдан дәлелдеу әдісі. «A» нұсқасы бақылау тобы (Control), «B» нұсқасы эксперименттік топ (Variant) болып табылады.</p>
+    <p style="font-family:system-ui;font-size:.88rem;color:rgba(255,255,255,.68);line-height:1.95">Amazon, Google, Netflix сияқты компаниялар күн сайын жүздеген A/B тесттерін жүргізеді. Зерттеулер бойынша, тиімді A/B тестілеу конверсияны орташа 20-30%-ға арттыра алады.</p>
+  </div>
+
+  <div class="card border-anim" style="animation-delay:.5s">
+    <div style="color:var(--c);font-size:.9rem;font-weight:700;letter-spacing:.08em;margin-bottom:.9rem;text-transform:uppercase;text-shadow:0 0 8px rgba(0,229,255,.4)">Статистикалық негіздер</div>
+    <p style="font-family:system-ui;font-size:.88rem;color:rgba(255,255,255,.68);line-height:1.95;margin-bottom:.9rem"><strong style="color:var(--c)">Z-тест</strong> — екі пропорцияны салыстыру үшін қолданылатын статистикалық тест. Z-score мәні неғұрлым жоғары болса, айырмашылық соғұрлым маңызды.</p>
+    <p style="font-family:system-ui;font-size:.88rem;color:rgba(255,255,255,.68);line-height:1.95;margin-bottom:.9rem"><strong style="color:var(--c)">p-мән</strong> — нәтижені кездейсоқ алу ықтималдығы. p &lt; 0.05 болса, нәтиже 95% сенімділікпен маңызды деп саналады.</p>
+    <p style="font-family:system-ui;font-size:.88rem;color:rgba(255,255,255,.68);line-height:1.95"><strong style="color:var(--c)">Uplift</strong> — Variant нұсқасының Control нұсқасына қарағандағы салыстырмалы өсімі: (CVR_B − CVR_A) / CVR_A × 100%</p>
+  </div>
+
+  <div class="card border-anim" style="animation-delay:1s">
+    <div style="color:var(--c);font-size:.9rem;font-weight:700;letter-spacing:.08em;margin-bottom:.9rem;text-transform:uppercase;text-shadow:0 0 8px rgba(0,229,255,.4)">Тестілеу процесі</div>
+    <p style="font-family:system-ui;font-size:.88rem;color:rgba(255,255,255,.68);line-height:1.95;margin-bottom:.9rem">Дұрыс A/B тест: 1) Гипотеза тұжырымдау → 2) Sample size есептеу → 3) Трафикті бөлу → 4) Тест жүргізу (7-14 күн) → 5) Статистикалық талдау → 6) Шешім қабылдау.</p>
+    <p style="font-family:system-ui;font-size:.88rem;color:rgba(255,255,255,.68);line-height:1.95">Бизнес тұрғысынан A/B тестілеу маркетинг шығындарын оңтайландырады, тұтынушы тәжірибесін жетілдіреді және деректерге сүйенген шешімдер қабылдауға мүмкіндік береді.</p>
+  </div>
+
+  <div class="card no-hover">
+    <div class="ch-title">📋 A/B Тестілеу Салыстырмалы Кестесі</div>
+    <div style="overflow-x:auto">
+      <table class="dtable">
+        <thead><tr><th>Метрика</th><th>Control (A)</th><th>Variant (B)</th><th>Нәтиже</th></tr></thead>
+        <tbody>
+          <tr><td>Конверсия (CVR)</td><td>4.2%</td><td style="color:var(--c)">5.8%</td><td style="color:var(--g);font-weight:700">+38%</td></tr>
+          <tr><td>Сессия ұзақтығы</td><td>2м 34с</td><td style="color:var(--c)">3м 12с</td><td style="color:var(--g);font-weight:700">+25%</td></tr>
+          <tr><td>Bounce Rate</td><td>68%</td><td style="color:var(--c)">54%</td><td style="color:var(--g);font-weight:700">−21%</td></tr>
+          <tr><td>ARPU</td><td>1,200₸</td><td style="color:var(--c)">1,540₸</td><td style="color:var(--g);font-weight:700">+28%</td></tr>
+          <tr><td>Z-score</td><td colspan="2" style="text-align:center">3.07</td><td style="color:var(--c);font-weight:700">✅ Маңызды</td></tr>
+          <tr><td>p-мән</td><td colspan="2" style="text-align:center">0.0023</td><td style="color:var(--g);font-weight:700">p &lt; 0.05</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:.7rem;color:rgba(255,255,255,.22);font-family:system-ui;margin-top:.75rem">* Мысалдық деректер. Нақты нәтижелер үшін Lab бетіне өтіңіз.</div>
+  </div>
+
+  <div style="display:flex;gap:1rem;flex-wrap:wrap">
+    <button class="btn f" onclick="go('lab')" style="animation:glow 3s ease-in-out infinite">▶ Өз тестімді бастау</button>
+    <button class="btn g2" onclick="go('hero')">← Басты бет</button>
+  </div>
+</div>
+
+<!-- ══ LAB ══ -->
+<div class="sec" id="lab">
+  <div class="ptag">[ Data Input ]</div>
+  <div class="ph"><span class="grad-text">🔬 Test Laboratory</span></div>
+
+  <div class="card no-hover">
+    <div class="grid2 mb">
+      <div><label>Тест атауы</label><input id="nm" placeholder="CTA батырмасының түсін өзгерту"></div>
+      <div><label>Ұзақтығы (күн)</label><input id="dur" type="number" placeholder="14"></div>
+    </div>
+    <div><label>Гипотеза</label><input id="hy" placeholder="Жасыл CTA-ны қызылға өзгерту конверсияны арттырады"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="vp">
+      <div class="vp-lbl" style="color:rgba(180,190,255,.75)">Variant A — Control</div>
+      <div class="mb"><label>Атауы</label><input id="an" value="Control"></div>
+      <div class="mb"><label>Посетитель саны</label><input id="av" type="number" placeholder="5000" oninput="lp()"></div>
+      <div class="mb"><label>Конверсия саны</label><input id="ac" type="number" placeholder="250" oninput="lp()"></div>
+      <div><label>ARPU (₸, міндетті емес)</label><input id="ar" type="number" placeholder="1500"></div>
+      <div id="cvA" style="display:none;padding:.55rem .9rem;background:rgba(0,229,255,.05);border-radius:8px;font-size:.78rem;display:none;justify-content:space-between;margin-top:.5rem">
+        <span style="color:rgba(255,255,255,.38)">Live CVR:</span><span id="cvAv" style="font-weight:700;color:rgba(180,190,255,.85)"></span>
+      </div>
+    </div>
+    <div class="vp b">
+      <div class="vp-lbl" style="color:var(--c)">Variant B — Test</div>
+      <div class="mb"><label>Атауы</label><input id="bn" value="Variant B"></div>
+      <div class="mb"><label>Посетитель саны</label><input id="bv" type="number" placeholder="5000" oninput="lp()"></div>
+      <div class="mb"><label>Конверсия саны</label><input id="bc" type="number" placeholder="310" oninput="lp()"></div>
+      <div><label>ARPU (₸, міндетті емес)</label><input id="br" type="number" placeholder="1700"></div>
+      <div id="cvB" style="display:none;padding:.55rem .9rem;background:rgba(0,229,255,.06);border-radius:8px;font-size:.78rem;justify-content:space-between;margin-top:.5rem">
+        <span style="color:rgba(0,229,255,.6)">Live CVR:</span><span id="cvBv" style="font-weight:700;color:var(--c)"></span>
+      </div>
+    </div>
+  </div>
+
+  <div id="liveBox" style="display:none;background:rgba(0,229,255,.03);border:1px solid rgba(0,229,255,.28);border-radius:12px;padding:1.25rem;text-align:center;margin-bottom:1rem;animation:glow 3s ease-in-out infinite">
+    <div style="font-size:.68rem;color:var(--c);letter-spacing:.2em;margin-bottom:1rem;text-shadow:0 0 8px var(--c)">⚡ LIVE PREVIEW</div>
+    <div class="live-row">
+      <div class="live-item"><div class="ll">Control CVR</div><div class="lv" id="livA" style="color:rgba(180,190,255,.85)"></div></div>
+      <div class="live-item" style="display:flex;align-items:center"><div style="color:rgba(255,255,255,.2);font-size:1.5rem">→</div></div>
+      <div class="live-item"><div class="ll" style="color:rgba(0,229,255,.6)">Variant CVR</div><div class="lv" id="livB" style="color:var(--c)"></div></div>
+      <div class="live-item"><div class="ll">Uplift</div><div class="lv" id="livUp"></div></div>
+    </div>
+  </div>
+
+  <div class="err" id="labErr"></div>
+  <div style="text-align:center;margin-top:1.75rem">
+    <button class="btn f lg" onclick="calc()" style="animation:glow 3s ease-in-out infinite">⚡ НӘТИЖЕЛЕРДІ ЕСЕПТЕУ</button>
+  </div>
+</div>
+
+<!-- ══ RESULTS ══ -->
+<div class="sec" id="results">
+  <div class="ptag">[ Statistical Analysis ]</div>
+  <div class="ph"><span class="grad-text">📊 Test Results</span></div>
+  <div id="resContent"><div style="text-align:center;padding:4rem;color:rgba(255,255,255,.33);font-family:system-ui"><p style="margin-bottom:1.5rem">Алдымен Lab бетінде деректерді енгізіңіз</p><button class="btn" onclick="go('lab')">→ Lab</button></div></div>
+</div>
+
+<!-- ══ AI AGENT ══ -->
+<div class="sec" id="ai">
+  <div class="ptag">[ AI-Powered Analysis ]</div>
+  <div class="ph"><span class="grad-text">🤖 AI Agent</span></div>
+  <div id="aiContent"><div style="text-align:center;padding:4rem;color:rgba(255,255,255,.33);font-family:system-ui"><p style="margin-bottom:1.5rem">Алдымен Lab бетінде деректерді енгізіп, нәтижелерді есептеңіз</p><button class="btn" onclick="go('lab')">→ Lab</button></div></div>
+</div>
+
+<!-- ══ CHAT ══ -->
+<div class="sec" id="chat">
+  <div class="ptag">[ AI Assistant ]</div>
+  <div class="ph"><span class="grad-text">💬 AI Chatbot</span></div>
+  <div class="card no-hover">
+    <div class="chat-box" id="chatBox">
+      <div class="msg"><div class="av" style="box-shadow:0 0 8px rgba(0,229,255,.2)">🤖</div><div class="bub">Сәлем! Мен AI сарапшысымын 🤖<br><br>A/B тестілеу, статистика, маркетинг, бизнес немесе кез-келген басқа тақырып бойынша сұрақ қойыңыз — жауап беруге дайынмын!</div></div>
+    </div>
+    <div class="chat-in">
+      <input id="chatIn" placeholder="Кез-келген сұрақ жазыңыз..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}">
+      <button class="btn f" onclick="sendMsg()" style="flex-shrink:0;padding:.7rem 1.25rem;letter-spacing:0;animation:glow 3s ease-in-out infinite">➤</button>
+    </div>
+  </div>
+  <div style="font-size:.64rem;color:rgba(255,255,255,.22);letter-spacing:.15em;margin-bottom:.65rem;text-transform:uppercase">Жылдам сұрақтар</div>
+  <div id="qbtns"></div>
+</div>
+
+<!-- ══ CONTACT ══ -->
+<div class="sec" id="contact">
+  <div class="ptag">[ Байланыс ]</div>
+  <div class="ph"><span class="grad-text">📬 Байланыс беті</span></div>
+
+  <div class="grid2" style="margin-bottom:2rem">
+    <div class="team-card" style="animation:float 4s ease-in-out infinite">
+      <div class="team-av" style="box-shadow:0 0 20px rgba(0,229,255,.2);animation:glow 3s ease-in-out infinite">👩‍💻</div>
+      <div class="team-name">Наурыз Аяла</div>
+      <div style="font-size:.78rem;color:rgba(255,255,255,.45);font-family:system-ui;margin-top:.5rem">Жоба орындаушысы</div>
+      <div style="margin-top:.75rem;font-family:system-ui;font-size:.76rem;color:rgba(255,255,255,.38);line-height:1.8">Ресторанное дело и гостиничный бизнес (В093)<br>1 курс · Гуманитарлық мектеп</div>
+    </div>
+    <div class="team-card" style="animation:float 4.5s ease-in-out infinite .5s">
+      <div class="team-av" style="box-shadow:0 0 20px rgba(255,60,172,.15);animation:glowP 3s ease-in-out infinite">👩‍🎓</div>
+      <div class="team-name">Ақат Альбина</div>
+      <div style="font-size:.78rem;color:rgba(255,255,255,.45);font-family:system-ui;margin-top:.5rem">Жоба орындаушысы</div>
+      <div style="margin-top:.75rem;font-family:system-ui;font-size:.76rem;color:rgba(255,255,255,.38);line-height:1.8">Ресторанное дело и гостиничный бизнес (В093)<br>1 курс · Гуманитарлық мектеп</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div id="cFormWrap">
+      <div class="card no-hover">
+        <div class="ch-title">✉ Хабарлама жіберу</div>
+        <div class="mb"><label>Аты-жөніңіз</label><input id="cName" placeholder="Сіздің атыңыз"></div>
+        <div class="mb"><label>Email</label><input id="cEmail" type="email" placeholder="email@example.com"></div>
+        <div class="mb"><label>Тақырып</label>
+          <select id="cSubj">
+            <option value="">Таңдаңыз</option>
+            <option>A/B тестілеу бойынша сұрақ</option>
+            <option>Жоба бойынша кері байланыс</option>
+            <option>Ынтымақтастық ұсынысы</option>
+            <option>Техникалық мәселе</option>
+            <option>Басқа</option>
+          </select>
+        </div>
+        <div class="mb"><label>Хабарлама</label><textarea id="cMsg" placeholder="Хабарламаңызды осында жазыңыз..."></textarea></div>
+        <div class="err" id="cErr"></div>
+        <button class="btn f" onclick="submitC()" style="width:100%;animation:glow 3s ease-in-out infinite">📨 Жіберу</button>
+      </div>
+    </div>
+    <div>
+      <div class="card no-hover" style="margin-bottom:1rem">
+        <div class="ch-title">🏛 Байланыс ақпараты</div>
+        <ul class="ilist">
+          <li><span>🏫</span><span>НАО «Нархоз Университеті»</span></li>
+          <li><span>🏢</span><span>Гуманитарлық мектеп</span></li>
+          <li><span>📚</span><span>Ресторанное дело и гостиничный бизнес (В093)</span></li>
+          <li><span>📖</span><span>АКТ — Ақпараттық-коммуникациялық технологиялар</span></li>
+          <li><span>📍</span><span>Алматы қ., Жандосов к. 55</span></li>
+          <li><span>✉</span><span>ayala.nauryz@narxoz.kz</span></li>
+          <li><span>✉</span><span>albina.akat@narxoz.kz</span></li>
+        </ul>
+      </div>
+      <div class="card no-hover">
+        <div class="ch-title">🔗 Әлеуметтік желілер</div>
+        <div class="socials">
+          <div class="soc" title="Instagram">📸</div>
+          <div class="soc" title="LinkedIn">💼</div>
+          <div class="soc" title="Telegram">✈</div>
+          <div class="soc" title="GitHub">⌨</div>
+          <div class="soc" title="YouTube">▶</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="ft-inner">
+    <div class="ft-grid">
+      <div class="ft-col"><h4>AB/LAB Platform</h4><p>Өнімді A/B тестілеу нәтижелерін ұсыну үшін әзірленген интерактивті веб-платформа.</p><p style="margin-top:.5rem">Тақырып №23 · 2026 ж.</p></div>
+      <div class="ft-col"><h4>Орындаған</h4><ul><li><strong style="color:rgba(255,255,255,.65)">Наурыз Аяла</strong></li><li><strong style="color:rgba(255,255,255,.65)">Ақат Альбина</strong></li><li style="margin-top:.4rem">Ресторанное дело и гостиничный бизнес (В093)</li><li>1 курс, 2026 ж.</li></ul></div>
+      <div class="ft-col"><h4>Оқу орны</h4><ul><li>НАО «Нархоз Университеті»</li><li style="margin-top:.3rem">Гуманитарлық мектеп</li><li style="margin-top:.3rem">Пән: <strong style="color:rgba(255,255,255,.5)">АКТ</strong></li><li style="margin-top:.3rem">Ақпараттық-коммуникациялық технологиялар</li></ul></div>
+      <div class="ft-col"><h4>Навигация</h4><ul>
+        <li><a onclick="go('hero')">Home — Басты бет</a></li>
+        <li><a onclick="go('about')">Туралы — A/B тест</a></li>
+        <li><a onclick="go('lab')">Lab — Деректер</a></li>
+        <li><a onclick="go('results')">Results — Нәтижелер</a></li>
+        <li><a onclick="go('ai')">AI Agent — Сараптама</a></li>
+        <li><a onclick="go('chat')">Chat — Чат-бот</a></li>
+        <li><a onclick="go('contact')">Байланыс</a></li>
+      </ul></div>
+    </div>
+    <div class="ft-bottom">
+      <div class="ft-copy"><strong>© 2026 Наурыз Аяла, Ақат Альбина</strong> · НАО «Нархоз Университеті» · Гуманитарлық мектеп<br>Ресторанное дело и гостиничный бизнес (В093) · АКТ пәні · Барлық құқықтар сақталған</div>
+      <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+        <div class="socials"><div class="soc">📸</div><div class="soc">💼</div><div class="soc">✈</div><div class="soc">⌨</div></div>
+        <button class="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑ Жоғарыға</button>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ════════════════════════════════════════
+// PARTICLES
+// ════════════════════════════════════════
+(()=>{
+  const c=document.getElementById('ptc'),ctx=c.getContext('2d');
+  const rsz=()=>{c.width=innerWidth;c.height=innerHeight;};rsz();
+  addEventListener('resize',rsz);
+  const N=55,pts=Array.from({length:N},()=>({x:Math.random()*c.width,y:Math.random()*c.height,vx:(Math.random()-.5)*.45,vy:(Math.random()-.5)*.45,r:Math.random()*1.5+.5,pink:Math.random()>.75}));
+  const draw=()=>{
+    ctx.clearRect(0,0,c.width,c.height);
+    for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){const d=Math.hypot(pts[i].x-pts[j].x,pts[i].y-pts[j].y);if(d<110){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(0,229,255,${.07*(1-d/110)})`;ctx.lineWidth=.5;ctx.stroke();}}
+    pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.pink?'rgba(255,60,172,.5)':'rgba(0,229,255,.45)';ctx.fill();p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>c.width)p.vx*=-1;if(p.y<0||p.y>c.height)p.vy*=-1;});
+    requestAnimationFrame(draw);
+  };draw();
+})();
+
+// ════════════════════════════════════════
+// TYPING
+// ════════════════════════════════════════
+(()=>{const t="> ANALYZING A/B TEST DATA...";let i=0;const el=document.getElementById('typed');const iv=setInterval(()=>{el.textContent=t.slice(0,i++);if(i>t.length)clearInterval(iv);},55);})();
+
+// ════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════
+function go(pg){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('show'));
+  document.querySelectorAll('.nl').forEach(n=>n.classList.toggle('active',n.dataset.pg===pg));
+  document.getElementById(pg).classList.add('show');
+  window.scrollTo(0,0);
+  if(pg==='chat')renderQbtns();
+}
+go('hero');
+
+// ════════════════════════════════════════
+// STATS
+// ════════════════════════════════════════
+const zSt=(p1,n1,p2,n2)=>{const pp=(p1*n1+p2*n2)/(n1+n2),se=Math.sqrt(pp*(1-pp)*(1/n1+1/n2));return se?(p2-p1)/se:0;};
+const pV=z=>Math.min(1,2*Math.exp(-0.717*Math.abs(z)-0.416*z*z));
+const ci95=(p,n)=>{const se=Math.sqrt(p*(1-p)/n);return[Math.max(0,p-1.96*se),Math.min(1,p+1.96*se)];};
+const V=id=>document.getElementById(id)?.value||'';
+
+// ════════════════════════════════════════
+// LIVE PREVIEW
+// ════════════════════════════════════════
+function lp(){
+  const av=+V('av'),ac=+V('ac'),bv=+V('bv'),bc=+V('bc');
+  const sA=av>0&&ac>0,sB=bv>0&&bc>0;
+  const ca=document.getElementById('cvA'),cb=document.getElementById('cvB');
+  ca.style.display=sA?'flex':'none';cb.style.display=sB?'flex':'none';
+  if(sA)document.getElementById('cvAv').textContent=(ac/av*100).toFixed(2)+'%';
+  if(sB)document.getElementById('cvBv').textContent=(bc/bv*100).toFixed(2)+'%';
+  const lb=document.getElementById('liveBox');
+  if(sA&&sB){
+    const aCR=ac/av,bCR=bc/bv,up=(bCR-aCR)/aCR*100;
+    lb.style.display='block';
+    document.getElementById('livA').textContent=(aCR*100).toFixed(2)+'%';
+    document.getElementById('livB').textContent=(bCR*100).toFixed(2)+'%';
+    const el=document.getElementById('livUp');el.textContent=(up>0?'+':'')+up.toFixed(1)+'%';el.style.color=up>0?'var(--g)':'var(--p)';
+  }else lb.style.display='none';
+}
+
+// ════════════════════════════════════════
+// CALCULATE
+// ════════════════════════════════════════
+let RES=null;let BC=null,LC=null;
+function calc(){
+  const av=+V('av'),ac=+V('ac'),bv=+V('bv'),bc=+V('bc');
+  const er=document.getElementById('labErr');
+  if(!av||!ac||!bv||!bc||ac>av||bc>bv){er.textContent='⚠ Дұрыс деректер енгізіңіз (конверсия < посетитель болу керек)';return;}
+  er.textContent='';
+  const aCR=ac/av,bCR=bc/bv,z=zSt(aCR,av,bCR,bv),p=pV(z),sig=p<.05;
+  const[al,ah]=ci95(aCR,av),[bl,bh]=ci95(bCR,bv);
+  const trend=Array.from({length:7},(_,i)=>({day:`К${i+1}`,a:Math.max(.001,aCR*(0.9+i/70)+(Math.random()-.5)*.003),b:Math.max(.001,bCR*(0.88+i/58)+(Math.random()-.5)*.003)}));
+  RES={aCR:aCR*100,bCR:bCR*100,up:(bCR-aCR)/aCR*100,z,p,sig,aci:[al*100,ah*100],bci:[bl*100,bh*100],ar:+V('ar')||0,br:+V('br')||0,trend,an:V('an')||'Control',bn:V('bn')||'Variant B',nm:V('nm'),hy:V('hy'),av,ac,bv,bc};
+  renderResults();renderAIContent();renderQbtns();go('results');
+}
+
+// ════════════════════════════════════════
+// RESULTS
+// ════════════════════════════════════════
+function ciBar(ci,cr,col,r){
+  const mn=Math.min(r.aci[0],r.bci[0])*.88,mx=Math.max(r.aci[1],r.bci[1])*1.12,rng=mx-mn;
+  const pL=((ci[0]-mn)/rng*100).toFixed(1),pW=((ci[1]-ci[0])/rng*100).toFixed(1),pM=((cr-mn)/rng*100).toFixed(1);
+  return`<div class="ci-track"><div class="ci-fill" style="left:${pL}%;width:${pW}%;background:${col}"></div><div class="ci-mark" style="left:${pM}%;background:${col}"></div></div>`;
+}
+function renderResults(){
+  const r=RES;
+  const wC=r.sig?(r.bCR>r.aCR?'var(--c)':'var(--p)'):'rgba(255,255,255,.5)';
+  const wI=r.sig?(r.bCR>r.aCR?'🏆':'⬅'):'🔄';
+  const wT=r.sig?(r.bCR>r.aCR?`${r.bn.toUpperCase()} ЖЕҢДІ — +${r.up.toFixed(1)}% ӨСІМ`:`${r.an.toUpperCase()} ЖЕҢДІ!`):'НӘТИЖЕ СТАТИСТИКАЛЫҚ МАҢЫЗДЫ ЕМЕС';
+  document.getElementById('resContent').innerHTML=`
+    <div class="card win no-hover" style="border-color:${wC};background:${r.sig?'rgba(0,229,255,.05)':'rgba(255,255,255,.015)'}">
+      <div style="font-size:2.75rem;margin-bottom:.5rem;animation:float 3s ease-in-out infinite">${wI}</div>
+      <div style="font-size:1.25rem;font-weight:700;color:${wC};margin-bottom:.5rem;text-shadow:0 0 20px ${wC}55">${wT}</div>
+      <div style="font-size:.76rem;color:rgba(255,255,255,.38);font-family:system-ui">${r.sig?`95% сенімділік | p = ${r.p.toFixed(4)}`:`p = ${r.p.toFixed(4)} — маңыздылық үшін p < 0.05 қажет`}</div>
+    </div>
+    <div class="grid4" style="margin-bottom:1.25rem">
+      ${[['Control CVR',r.aCR.toFixed(2)+'%','rgba(180,190,255,.85)',.0],['Variant CVR',r.bCR.toFixed(2)+'%','var(--c)',.1],['Uplift',(r.up>0?'+':'')+r.up.toFixed(2)+'%',r.up>0?'var(--g)':'var(--p)',.2],['p-мән',r.p.toFixed(4),r.sig?'var(--g)':'var(--p)',.3]].map(([l,v,c,d])=>`<div class="sc" style="animation-delay:${d}s;box-shadow:0 0 15px ${c}11"><div class="sc-l">${l}</div><div class="sc-v" style="color:${c};text-shadow:0 0 10px ${c}55">${v}</div></div>`).join('')}
+    </div>
+    <div class="card no-hover"><div class="ch-title">Конверсия жылдамдығы салыстыруы</div><div class="ch-wrap"><canvas id="barC" role="img" aria-label="CVR comparison bar chart">CVR comparison</canvas></div></div>
+    <div class="card no-hover"><div class="ch-title">Апталық динамика</div><div class="ch-wrap"><canvas id="lineC" role="img" aria-label="Weekly CVR trend">Weekly trend</canvas></div><div class="legend"><div class="leg-i"><span class="leg-line" style="background:rgba(125,135,255,.8);box-shadow:0 0 5px rgba(125,135,255,.5)"></span>${r.an}</div><div class="leg-i"><span class="leg-line" style="background:var(--c);box-shadow:0 0 5px var(--c)"></span>${r.bn}</div></div></div>
+    <div class="card no-hover"><div class="ch-title">95% Сенімділік аралықтары</div>
+      <div style="margin-bottom:1.25rem"><div style="display:flex;justify-content:space-between;font-size:.77rem;margin-bottom:.55rem;font-family:system-ui"><span style="color:rgba(125,135,255,.85);font-weight:600;text-shadow:0 0 6px rgba(125,135,255,.4)">${r.an}</span><span style="color:rgba(255,255,255,.4)">[${r.aci[0].toFixed(2)}% – ${r.aci[1].toFixed(2)}%] mean:<b style="color:rgba(125,135,255,.85)"> ${r.aCR.toFixed(2)}%</b></span></div>${ciBar(r.aci,r.aCR,'rgba(125,135,255,.85)',r)}</div>
+      <div style="margin-bottom:.5rem"><div style="display:flex;justify-content:space-between;font-size:.77rem;margin-bottom:.55rem;font-family:system-ui"><span style="color:var(--c);font-weight:600;text-shadow:0 0 6px rgba(0,229,255,.4)">${r.bn}</span><span style="color:rgba(255,255,255,.4)">[${r.bci[0].toFixed(2)}% – ${r.bci[1].toFixed(2)}%] mean:<b style="color:var(--c)"> ${r.bCR.toFixed(2)}%</b></span></div>${ciBar(r.bci,r.bCR,'var(--c)',r)}</div>
+      <div style="font-size:.71rem;color:rgba(255,255,255,.22);font-family:system-ui">Барлар аралықты, тік сызықтар нүктелік CVR бағалауын білдіреді</div>
+    </div>
+    <div class="card no-hover"><div class="ch-title">📋 Нәтижелер кестесі</div><div style="overflow-x:auto"><table class="dtable"><thead><tr><th>Метрика</th><th>${r.an} (A)</th><th>${r.bn} (B)</th><th>Айырым</th></tr></thead><tbody>
+      ${[['CVR',r.aCR.toFixed(2)+'%',r.bCR.toFixed(2)+'%',(r.up>0?'+':'')+r.up.toFixed(2)+'%',r.up>0?'var(--g)':'var(--p)'],['Конверсия',r.ac,r.bc,(+r.bc-+r.ac>0?'+':'')+(+r.bc-+r.ac),'var(--g)'],['Посетитель',r.av,r.bv,'—','rgba(255,255,255,.4)'],['Z-score','—','—',r.z.toFixed(3),'var(--c)'],['p-мән','—','—',r.p.toFixed(4),r.sig?'var(--g)':'var(--p)'],['Маңыздылық','—','—',r.sig?'✅ Иә':'❌ Жоқ',r.sig?'var(--g)':'var(--p)']].map(([m,a,b,rv,rc])=>`<tr><td>${m}</td><td>${a}</td><td style="color:var(--c)">${b}</td><td style="color:${rc};font-weight:700">${rv}</td></tr>`).join('')}
+    </tbody></table></div></div>
+    ${r.ar>0?`<div class="card no-hover"><div class="ch-title">Табыс талдауы</div><div class="grid3">${[['Control ARPU',r.ar.toLocaleString()+'₸','rgba(180,190,255,.85)'],['Variant ARPU',r.br.toLocaleString()+'₸','var(--c)'],['Revenue Uplift',((r.br-r.ar)/r.ar*100).toFixed(1)+'%',r.br>r.ar?'var(--g)':'var(--p)']].map(([l,v,c])=>`<div class="sc"><div class="sc-l">${l}</div><div class="sc-v" style="color:${c};text-shadow:0 0 10px ${c}55">${v}</div></div>`).join('')}</div></div>`:''}
+    <div class="btn-row">
+      <button class="btn p pf" onclick="go('ai')" style="animation:glowP 3s ease-in-out infinite">🤖 AI Талдауы</button>
+      <button class="btn f" onclick="go('chat')" style="animation:glow 3s ease-in-out infinite">💬 Chatbot</button>
+      <button class="btn g2" onclick="go('lab')">← Жаңа тест</button>
+    </div>`;
+  setTimeout(()=>{
+    if(BC)BC.destroy();
+    BC=new Chart(document.getElementById('barC').getContext('2d'),{type:'bar',data:{labels:[RES.an,RES.bn],datasets:[{data:[+RES.aCR.toFixed(2),+RES.bCR.toFixed(2)],backgroundColor:['rgba(125,135,255,.65)','rgba(0,229,255,.75)'],borderRadius:7,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0b0f20',borderColor:'rgba(0,229,255,.15)',borderWidth:1,bodyFont:{family:'Courier New',size:12},callbacks:{label:v=>`CVR: ${v.raw}%`}}},scales:{x:{ticks:{color:'rgba(255,255,255,.42)',font:{family:'Courier New',size:12}},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'rgba(255,255,255,.38)',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.05)'}}}}});
+    if(LC)LC.destroy();
+    LC=new Chart(document.getElementById('lineC').getContext('2d'),{type:'line',data:{labels:RES.trend.map(d=>d.day),datasets:[{label:RES.an,data:RES.trend.map(d=>+(d.a*100).toFixed(2)),borderColor:'rgba(125,135,255,.8)',borderWidth:2,pointRadius:0,tension:.4},{label:RES.bn,data:RES.trend.map(d=>+(d.b*100).toFixed(2)),borderColor:'rgba(0,229,255,.9)',borderWidth:2.5,pointRadius:0,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0b0f20',borderColor:'rgba(0,229,255,.15)',borderWidth:1,bodyFont:{family:'Courier New',size:12},callbacks:{label:v=>`${v.dataset.label}: ${v.raw}%`}}},scales:{x:{ticks:{color:'rgba(255,255,255,.35)',font:{size:11,family:'Courier New'}},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'rgba(255,255,255,.35)',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.05)'}}}}});
+  },60);
+}
+
+// ════════════════════════════════════════
+// AI AGENT — Smart analysis generator
+// ════════════════════════════════════════
+function generateAIAnalysis(r){
+  const winner=r.bCR>r.aCR?r.bn:r.an;
+  const loser=r.bCR>r.aCR?r.an:r.bn;
+  const upAbs=Math.abs(r.bCR-r.aCR).toFixed(2);
+  const confidence=r.p<.001?'99.9%':r.p<.01?'99%':r.p<.05?'95%':'—';
+
+  const part1=`📊 Нәтижелердің мәні
+
+${r.an} (Control): ${r.aCR.toFixed(2)}% конверсия жылдамдығы
+${r.bn} (Variant): ${r.bCR.toFixed(2)}% конверсия жылдамдығы
+Абсолютті айырым: ${upAbs} пайыздық тармақ
+Салыстырмалы өсім: ${r.up>0?'+':''}${r.up.toFixed(2)}%
+
+${r.sig?`Тест нәтижелері статистикалық тұрғыдан маңызды болып табылады — ${confidence} сенімділік деңгейімен расталған. Z-score ${r.z.toFixed(2)} мәні >${r.z>3?'3.0':'1.96'} шекті мәнінен асып, p-мән ${r.p.toFixed(4)} < 0.05 критерийін қанағаттандырады.`:`Тест нәтижелері статистикалық тұрғыдан маңызды ЕМЕС — p-мән ${r.p.toFixed(4)} > 0.05 шекті деңгейінен жоғары. Байқалған ${Math.abs(r.up).toFixed(1)}% айырмашылық кездейсоқ болуы мүмкін.`}`;
+
+  const part2=`\n\n✅ Бизнес-шешім
+
+${r.sig?(r.bCR>r.aCR?
+`✅ ${r.bn} нұсқасын ІСКЕ АСЫРУ ҰСЫНЫЛАДЫ.
+
+${r.bn} нұсқасы ${r.aCR.toFixed(2)}%-дан ${r.bCR.toFixed(2)}%-ға дейін конверсияны арттырды — бұл ${r.up.toFixed(1)}% салыстырмалы өсімді білдіреді. Егер айлық трафик ${(+r.av*30).toLocaleString()} посетитель болса, бұл айына шамамен ${Math.round((+r.bCR/100-+r.aCR/100)*+r.av*30)} қосымша конверсия береді.${r.ar>0?` Табыс тұрғысынан ARPU ${r.ar}₸-дан ${r.br}₸-ға дейін өсті — ${((r.br-r.ar)/r.ar*100).toFixed(1)}% табыс өсімі.`:''}`
+:`⚠ ${r.an} (Control) нұсқасы ЖАҚСЫРАҚ жұмыс істеді. ${r.bn} нұсқасын жалпыға бастау ҰСЫНЫЛМАЙДЫ — конверсия ${Math.abs(r.up).toFixed(1)}%-ға ТӨМЕНДЕГЕН.`)
+:`❓ Нақты шешім қабылдау үшін ТЕСТ ҰЗАРТЫЛУЫ КЕРЕК.
+
+Қазіргі деректер жеткіліксіз. Ұсыныс: тестті тағы ${Math.max(7,Math.ceil(-Math.log(0.05/r.p)*7))} күнге немесе іріктеме мөлшері 2 есеге дейін ұзартыңыз.`}`;
+
+  const part3=`\n\n⚠ Тәуекелдер мен шектеулер
+
+• Новизна эффектісі: пайдаланушылар жаңалыққа уақытша жақсы реакция береді — тест ұзағырақ жүргізу керек
+• Сезондылық: апта, мереке немесе маусым нәтижеге әсер етуі мүмкін
+• Сегменттеу: нәтиже барлық аудитория үшін бірдей болмауы мүмкін — мобильді/desktop, жаңа/тұрақты пайдаланушылар бойынша бөлек талдаңыз
+• Таралу контексті: A/B тест тек бір метриканы (CVR) өлшеді — басқа KPI-ларға (retention, NPS) да назар аударыңыз
+${r.av<1000||r.bv<1000?'• ⚠ Іріктеме мөлшері аз! Нәтиже сенімді болу үшін кем дегенде 1000 посетитель қажет':''}`;
+
+  const part4=`\n\n🚀 Келесі қадамдар
+
+${r.sig&&r.bCR>r.aCR?
+`1. ${r.bn} нұсқасын барлық трафикке 100% шығарыңыз
+2. 2 апта бойы нәтижені бақылаңыз (retention, revenue)
+3. Бастапқы жақсартуға негізделген жаңа гипотезалар тұжырымдаңыз
+4. Мобильді нұсқа үшін бөлек тест жүргізіңіз
+5. A/B тест нәтижелерін командамен бөлісіп, деректерге сүйенген мәдениетті дамытыңыз`
+:r.sig?
+`1. ${r.an} нұсқасын сақтаңыз
+2. ${r.bn} нұсқасын неліктен нашар жұмыс істегенін зерттеңіз — пайдаланушы тестілеуі, тыстаулар
+3. Жаңа гипотезалар негізінде жақсартылған Variant C дайындаңыз
+4. Дизайн командасымен нәтижелерді талдаңыз`
+:`1. Тестті ${Math.max(7, Math.ceil(-Math.log(0.05/r.p)*7))} күнге ұзартыңыз
+2. Трафикті арттыруды қарастырыңыз
+3. Іріктеме мөлшері калькулятор арқылы оптималды N есептеңіз
+4. Аралық нәтижелерді апта сайын бақылаңыз`}`;
+
+  return part1+part2+part3+part4;
+}
+
+function renderAIContent(){
+  if(!RES)return;
+  document.getElementById('aiContent').innerHTML=`
+    <div class="card no-hover">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem">
+        <div style="font-size:.69rem;color:var(--c);letter-spacing:.15em;text-transform:uppercase;text-shadow:0 0 8px rgba(0,229,255,.4)">AI Сарапшы — Бизнес Талдауы</div>
+        <button class="btn" style="padding:.45rem .9rem;font-size:.72rem" onclick="animateAI()">↻ Жаңарту</button>
+      </div>
+      <div id="aiBody"><div style="text-align:center;padding:2.5rem"><button class="btn p pf" onclick="animateAI()" style="padding:.9rem 2.5rem;animation:glowP 3s ease-in-out infinite">🤖 Сараптама алу</button></div></div>
+    </div>
+    <div class="card no-hover">
+      <div style="font-size:.69rem;color:rgba(255,255,255,.3);letter-spacing:.15em;text-transform:uppercase;margin-bottom:1rem">Тест деректері</div>
+      <table style="width:100%;border-collapse:collapse;font-family:system-ui;font-size:.82rem">
+        ${[['Тест',RES.nm||'—'],['Гипотеза',RES.hy||'—'],['Control CVR',RES.aCR.toFixed(2)+'%'],['Variant CVR',RES.bCR.toFixed(2)+'%'],['Uplift',(RES.up>0?'+':'')+RES.up.toFixed(2)+'%'],['Z-score',RES.z.toFixed(3)],['p-мән',RES.p.toFixed(4)],['Маңыздылық',RES.sig?'✅ Иә (p < 0.05)':'❌ Жоқ']].map(([k,v])=>`<tr style="border-bottom:1px solid rgba(255,255,255,.04)"><td style="padding:.5rem 0;color:rgba(255,255,255,.38);width:40%">${k}</td><td style="padding:.5rem 0;color:rgba(255,255,255,.78);font-family:'Courier New',monospace;font-size:.81rem">${v}</td></tr>`).join('')}
+      </table>
+    </div>`;
+}
+
+function animateAI(){
+  if(!RES)return;
+  const body=document.getElementById('aiBody');
+  if(!body)return;
+  body.innerHTML=`<div class="ai-loader"><div class="spin"></div><div style="color:var(--c);font-size:.76rem;letter-spacing:.2em;text-shadow:0 0 8px var(--c)">ТАЛДАНУДА...</div><div style="color:rgba(255,255,255,.28);font-size:.71rem;margin-top:.5rem;font-family:system-ui">AI сарапшы нәтижелерді талдап жатыр...</div><div class="ai-bar" id="aiBar" style="margin:1rem auto 0;max-width:200px"></div></div>`;
+  let w=0;const bar=document.getElementById('aiBar');
+  const grow=setInterval(()=>{w=Math.min(w+Math.random()*8,95);if(bar)bar.style.width=w+'%';},80);
+  setTimeout(()=>{
+    clearInterval(grow);if(bar)bar.style.width='100%';
+    setTimeout(()=>{
+      const txt=generateAIAnalysis(RES);
+      body.innerHTML=`<div class="ai-text"></div>`;
+      const el=body.querySelector('.ai-text');
+      let i=0;const iv=setInterval(()=>{el.textContent=txt.slice(0,i+=3);if(i>=txt.length){el.textContent=txt;clearInterval(iv);}},12);
+    },300);
+  },2200);
+}
+
+// ════════════════════════════════════════
+// CHATBOT — Knowledge base
+// ════════════════════════════════════════
+const KB=[
+  {kw:['ab тест','ab test','что такое','дегеніміз не','a/b'],ans:`A/B тестілеу (сплит-тестілеу) — бұл екі нұсқаны (A және B) бір уақытта салыстырып, қайсысы жақсы жұмыс істейтінін статистикалық тұрғыдан анықтау әдісі.\n\n🔹 A нұсқасы = Control (бастапқы)\n🔹 B нұсқасы = Variant (жаңа)\n\nМақсат: деректерге сүйенген шешімдер қабылдау, болжамдарды емес, фактілерді негізге алу.\n\nMysalы: CTA батырмасының түсін өзгерту, тақырыпты ауыстыру, форма дизайнын жетілдіру.`},
+  {kw:['p-мән','p-value','p мән','p значение'],ans:`P-мән дегеніміз — нөлдік гипотеза дұрыс болса, байқалған нәтижені кездейсоқ алу ықтималдығы.\n\n📊 Интерпретация:\n• p < 0.05 → 95% сенімділікпен маңызды ✅\n• p < 0.01 → 99% сенімділікпен маңызды ✅✅\n• p ≥ 0.05 → маңызды ЕМЕС ❌\n\nМысалы: p = 0.03 дегеніміз — бұл нәтижені кездейсоқ алу ықтималдығы 3% ғана. Яғни 97% сенімділікпен нәтиже шынайы.`},
+  {kw:['z-score','z score','z баллы'],ans:`Z-score — байқалған айырмашылықтың стандартты ауытқулар санын көрсетеді.\n\n📏 Шекті мәндер:\n• |z| > 1.65 → 90% сенімділік\n• |z| > 1.96 → 95% сенімділік ✅\n• |z| > 2.58 → 99% сенімділік\n• |z| > 3.29 → 99.9% сенімділік\n\nZ неғұрлым жоғары болса, нәтиже соғұрлым маңызды.\n\nФормула: z = (p₂ - p₁) / √[p̄(1-p̄)(1/n₁ + 1/n₂)]`},
+  {kw:['confidence interval','сенімділік аралығы','ci','доверительный'],ans:`95% Сенімділік аралығы (CI) — шынайы конверсия жылдамдығының 95% ықтималдықпен жататын аралығы.\n\n📌 Мысалы: CVR = 5.2%, CI = [4.8%, 5.6%]\nДегеніміз: шынайы CVR 95% ықтималдықпен 4.8% мен 5.6% арасында жатыр.\n\n✅ Аралықтар қабыспаса → нәтиже маңызды\n❌ Аралықтар қабысса → нәтиже маңызды ЕМЕС\n\nФормула: p ± 1.96 × √[p(1-p)/n]`},
+  {kw:['sample size','іріктеме','выборка','minimum','минимум'],ans:`Minimum sample size (минималды іріктеме мөлшері) — статистикалық маңызды нәтиже алу үшін қажетті посетитель саны.\n\n📐 Жуық формула:\nn = 2 × (z_α + z_β)² × p(1-p) / δ²\n\nМұнда:\n• z_α = 1.96 (α=0.05)\n• z_β = 0.84 (Power=80%)\n• p = бастапқы CVR\n• δ = анықтағыңыз келген минималды эффект\n\nМысалы: CVR=5%, мEffekt=1% → шамамен 3,800 посетитель/нұсқа\n\n💡 Ереже: іріктеме аз болса, нәтижеге сенуге болмайды!`},
+  {kw:['ұзақтығы','сколько дней','сколько времени','duration','қанша күн'],ans:`A/B тест ұзақтығы бірнеше факторға байланысты:\n\n⏱ Ең аз: 7 күн (апта ішіндегі ауытқуларды ескеру үшін)\n🎯 Оптималды: 14-28 күн\n\nТоқтату керек емес жағдайлар:\n• Тест басталғаннан бірнеше сағат өткен соң\n• p-мән 0.05-тен аз болды деп (ерте тоқтату — Type I Error!)\n• Жеткілікті іріктеме жиналмаса\n\n💡 Ереже: тестті алдын ала жоспарлаңыз — іріктеме мөлшері толса немесе мерзім біткенде ғана тоқтатыңыз!`},
+  {kw:['конверсия','conversion','cvr','что такое конверсия'],ans:`Конверсия — пайдаланушының мақсатты іс-қимылды орындауы.\n\nМысалдар:\n🛒 Сатып алу\n📝 Тіркелу / форманы толтыру\n📞 Қоңырау шалу\n💾 Жүктеу\n👆 Батырманы басу\n\nКонверсия жылдамдығы (CVR):\nCVR = Конверсиялар / Жалпы посетитель × 100%\n\nМысалы: 5000 посетитель, 250 конверсия\nCVR = 250/5000 × 100% = 5.0%\n\n💡 Орташа e-commerce CVR: 2-4%`},
+  {kw:['uplift','өсім','рост','прирост'],ans:`Uplift (өсім) — Variant нұсқасының Control-ге қарағандағы салыстырмалы жақсаруы.\n\nФормула:\nUplift = (CVR_B - CVR_A) / CVR_A × 100%\n\nМысалы:\n• CVR_A = 4.0%\n• CVR_B = 5.2%\n• Uplift = (5.2 - 4.0) / 4.0 × 100% = +30%\n\nМаңызды: Uplift пайыздық тармақ (абсолютті айырым) емес, пайыздық өсім. 4%→5% бұл +1 п.т. абсолютті, бірақ +25% салыстырмалы өсім.`},
+  {kw:['statistical power','power','мощность','статистическая мощность'],ans:`Statistical Power (статистикалық қуат) — шынайы айырмашылық болған кезде оны анықтай алу ықтималдығы.\n\n📊 Стандарт: Power = 80% (β = 0.20)\n\nМысалы: Power=80% дегеніміз — шынайы эффект болса, оны 80% жағдайда анықтаймыз. 20% жағдайда "болмады" деп жаңылысамыз (Type II Error / false negative).\n\nPower жоғарылату үшін:\n• Іріктеме мөлшерін арттыру\n• Жеткілікті ұзақ тест жүргізу\n• Анықтағыңыз келген эффект мөлшерін арттыру`},
+  {kw:['multivariate','мультивариативный','mvt'],ans:`Multivariate Test (MVT) — бір уақытта бірнеше элементтің комбинациясын тестілеу.\n\nA/B тест vs MVT:\n• A/B: 1 элемент, 2 нұсқа → қарапайым, аз трафик керек\n• MVT: N элемент, M нұсқа → күрделі, КӨП трафик керек\n\nМысалы, 3 элемент × 2 нұсқа = 8 комбинация!\n\n💡 Ереже: трафик аз болса → A/B тест. Трафик өте көп болса → MVT.`},
+  {kw:['нәтижемді','менің тестім','my test','мой тест'],ans:()=>RES?`Сіздің тест нәтижелеріңіз:\n\n📊 Control (${RES.an}): ${RES.aCR.toFixed(2)}% CVR\n📊 Variant (${RES.bn}): ${RES.bCR.toFixed(2)}% CVR\n📈 Uplift: ${RES.up>0?'+':''}${RES.up.toFixed(2)}%\n🔢 Z-score: ${RES.z.toFixed(2)}\n📉 p-мән: ${RES.p.toFixed(4)}\n\n${RES.sig?(RES.bCR>RES.aCR?`✅ ${RES.bn} нұсқасы статистикалық тұрғыдан маңызды жақсы нәтиже көрсетті! Іске асыруға болады.`:`⚠ ${RES.an} нұсқасы жақсы — ${RES.bn} іске асыру ұсынылмайды.`):`❌ Нәтиже статистикалық маңызды емес. Тестті ұзартыңыз немесе іріктемені арттырыңыз.`}`:'Тест деректерін әлі енгізген жоқсыз. Lab бетіне өтіп, деректеріңізді енгізіңіз!'},
+  {kw:['маркетинг','marketing'],ans:`A/B тестілеу маркетингте:\n\n📧 Email маркетинг: тақырып жолы, жіберу уақыты, CTA\n🌐 Лендинг беттер: заголовок, суреттер, форма\n📱 Push notifications: мәтін, уақыт\n💰 Жарнама: сурет, мәтін, аудитория сегменті\n🛒 E-commerce: өнім беттері, баға отображение, checkout\n\n💡 Маркетингтегі A/B тестілеу ережесі:\n1 тест = 1 өзгеріс. Бірнеше нәрсені бір уақытта өзгертпеңіз!`},
+];
+
+const FALLBACK=[
+  'Өте қызықты сұрақ! Бұл тақырып бойынша толығырақ айтатын болсам...',
+  'Жақсы сұрақ! Деректер аналитикасы мен A/B тестілеу бойынша мынаны атап өткім келеді:',
+  'Бұл бизнес аналитика тұрғысынан маңызды тақырып.',
+];
+
+let CHAT_MSGS=[{r:'a',t:'Сәлем! Мен AI сарапшысымын 🤖\n\nA/B тестілеу, статистика, маркетинг, бизнес немесе кез-келген басқа тақырып бойынша сұрақ қойыңыз — жауап беруге дайынмын!'}];
+
+function getAnswer(q){
+  const ql=q.toLowerCase();
+  for(const{kw,ans}of KB){
+    if(kw.some(k=>ql.includes(k))){return typeof ans==='function'?ans():ans;}
+  }
+  if(RES&&(ql.includes('тест')||ql.includes('нәтиж')||ql.includes('результат'))){
+    return `Сіздің тест бойынша: Control CVR=${RES.aCR.toFixed(2)}%, Variant CVR=${RES.bCR.toFixed(2)}%, Uplift=${RES.up>0?'+':''}${RES.up.toFixed(2)}%, p=${RES.p.toFixed(4)}. ${RES.sig?`${RES.bCR>RES.aCR?RES.bn:RES.an} нұсқасы жеңді! Статистикалық маңызды нәтиже.`:'Нәтиже маңызды емес — тестті ұзартыңыз.'}`;
+  }
+  return `${FALLBACK[Math.floor(Math.random()*FALLBACK.length)]}\n\nA/B тестілеу тақырыбында сұрақтарыңыз болса — мысалы p-мән, конверсия, sample size, statistical power, multivariate test — толық жауап беруге дайынмын! 🤖`;
+}
+
+function addBub(r,t){
+  const box=document.getElementById('chatBox');
+  const d=document.createElement('div');
+  d.className='msg'+(r==='u'?' u':'');
+  d.innerHTML=`<div class="av" ${r==='a'?'style="box-shadow:0 0 8px rgba(0,229,255,.2)"':'style="box-shadow:0 0 8px rgba(255,60,172,.15)"'}>${r==='u'?'У':'🤖'}</div><div class="bub">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`;
+  box.appendChild(d);d.scrollIntoView({behavior:'smooth'});
+}
+
+function sendMsg(){
+  const inp=document.getElementById('chatIn');
+  const t=inp.value.trim();if(!t)return;
+  CHAT_MSGS.push({r:'u',t});addBub('u',t);inp.value='';
+  const box=document.getElementById('chatBox');
+  const ld=document.createElement('div');ld.className='msg';ld.id='ldng';
+  ld.innerHTML=`<div class="av" style="box-shadow:0 0 8px rgba(0,229,255,.2)">🤖</div><div class="tydot">ЖАУАП ДАЙЫНДАЛУДА...</div>`;
+  box.appendChild(ld);ld.scrollIntoView({behavior:'smooth'});
+  const delay=600+Math.random()*800;
+  setTimeout(()=>{ld.remove();const ans=getAnswer(t);CHAT_MSGS.push({r:'a',t:ans});addBub('a',ans);},delay);
+}
+
+function renderQbtns(){
+  const qs=['A/B тест дегеніміз не?','p-мән қалай түсіндіріледі?','Minimum sample size есептеу?','Тест қанша күн жүргізу керек?','Conversion Rate дегеніміз не?','Uplift дегеніміз не?','Statistical Power дегеніміз?',RES?'Менің нәтижемді талда':'Multivariate test дегеніміз?'];
+  document.getElementById('qbtns').innerHTML=qs.map(q=>`<button class="qb" onclick="document.getElementById('chatIn').value='${q.replace(/'/g,"\\'")}'">${q}</button>`).join('');
+}
+renderQbtns();
+
+// ════════════════════════════════════════
+// CONTACT FORM
+// ════════════════════════════════════════
+function submitC(){
+  const n=document.getElementById('cName').value,e=document.getElementById('cEmail').value,s=document.getElementById('cSubj').value,m=document.getElementById('cMsg').value;
+  const er=document.getElementById('cErr');
+  if(!n||!e||!s||!m){er.textContent='⚠ Барлық өрістерді толтырыңыз';return;}
+  if(!e.includes('@')){er.textContent='⚠ Дұрыс email енгізіңіз';return;}
+  er.textContent='';
+  document.getElementById('cFormWrap').innerHTML=`<div class="card no-hover" style="text-align:center;padding:3rem;animation:glow 3s ease-in-out infinite"><div style="font-size:3rem;margin-bottom:1rem;animation:float 3s ease-in-out infinite">✅</div><div style="font-size:1.1rem;font-weight:700;color:var(--g);margin-bottom:.75rem;text-shadow:0 0 12px rgba(77,255,145,.4)">Хабарлама жіберілді!</div><p style="font-family:system-ui;color:rgba(255,255,255,.6);font-size:.85rem;line-height:1.7;margin-bottom:1.25rem">Сізбен жақын арада байланысамыз. Рахмет!</p><button class="btn" onclick="location.reload()">← Қайта жіберу</button></div>`;
+}
+
+// ════════════════════════════════════════
+// MUSIC — Synthwave Web Audio API
+// ════════════════════════════════════════
+let aC=null,mG=null,st=0,nt=0,rf=null,mon=false;
+function pStep(ctx,master,time,s){
+  const spb=60/126/4,mf=m=>440*Math.pow(2,(m-69)/12);
+  const osc=(midi,dur,type,vol,lpF)=>{const o=ctx.createOscillator(),f=ctx.createBiquadFilter(),g=ctx.createGain();o.type=type;o.frequency.value=mf(midi);f.type='lowpass';f.frequency.setValueAtTime(lpF,time);f.frequency.exponentialRampToValueAtTime(180,time+dur*.85);f.Q.value=7;o.connect(f);f.connect(g);g.connect(master);g.gain.setValueAtTime(vol,time);g.gain.exponentialRampToValueAtTime(.001,time+dur);o.start(time);o.stop(time+dur);};
+  const nz=(hp,dur,vol)=>{const buf=ctx.createBuffer(1,~~(ctx.sampleRate*dur),ctx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const src=ctx.createBufferSource(),f=ctx.createBiquadFilter(),g=ctx.createGain();src.buffer=buf;f.type='highpass';f.frequency.value=hp;src.connect(f);f.connect(g);g.connect(master);g.gain.setValueAtTime(vol,time);g.gain.exponentialRampToValueAtTime(.001,time+dur);src.start(time);};
+  const kick=()=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(master);o.frequency.setValueAtTime(165,time);o.frequency.exponentialRampToValueAtTime(.01,time+.35);g.gain.setValueAtTime(1.2,time);g.gain.exponentialRampToValueAtTime(.001,time+.35);o.start(time);o.stop(time+.35);};
+  const i16=s%16;
+  if(i16===0||i16===8)kick();
+  if(i16===4||i16===12)nz(1200,.18,.72);
+  nz(9500,.04,i16%4===0?.32:.15);
+  const bseq=[57,57,57,57,60,60,60,60,55,55,55,55,53,53,53,53];
+  if(i16%4===0)osc(bseq[i16],spb*3.85,'sawtooth',.52,900);
+  const lseq=[69,72,76,79,81,79,76,72,69,72,76,79,84,83,81,79];
+  if(i16%2===0)osc(lseq[i16],spb*1.75,'square',.085,2200);
+  if(i16===0)[57,60,64,69].forEach(n=>osc(n+12,spb*14.5,'sawtooth',.035,380));
+}
+function startMusic(){
+  try{
+    aC=new(window.AudioContext||window.webkitAudioContext)();
+    mG=aC.createGain();mG.gain.value=.55;mG.connect(aC.destination);
+    st=0;nt=aC.currentTime+.05;mon=true;
+    const tick=()=>{if(!mon)return;while(nt<aC.currentTime+.15){pStep(aC,mG,nt,st);nt+=60/126/4;st++;}rf=requestAnimationFrame(tick);};
+    rf=requestAnimationFrame(tick);
+    const btn=document.getElementById('musicBtn');
+    btn.textContent='⏸ STOP';btn.classList.add('on');
+  }catch(e){}
+}
+function stopMusic(){
+  mon=false;cancelAnimationFrame(rf);
+  if(aC){aC.close();aC=null;}
+  const btn=document.getElementById('musicBtn');
+  btn.textContent='♪ MUSIC';btn.classList.remove('on');
+}
+function toggleMusic(){if(mon)stopMusic();else startMusic();}
+</script>
+</body>
+</html>
