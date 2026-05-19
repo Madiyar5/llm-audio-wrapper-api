@@ -7,6 +7,8 @@ from app.routes.analyze import router as analyze_router
 import logging
 import sys
 
+CURRENT_DIR = Path(__file__).resolve().parent
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -43,4 +45,4 @@ async def unhandled_exception_handler(request, exc):
         },
     )
 
-app.mount("/site", StaticFiles(directory="site", html=True), name="friends_project")
+app.mount("/site", StaticFiles(directory=CURRENT_DIR / "site", html=True), name="friends_project")
